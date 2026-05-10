@@ -44,7 +44,7 @@ body {
   inset: 0;
   display: none;
   overflow: hidden;
-  padding: clamp(44px, 5vw, 78px);
+  padding: clamp(42px, 4.8vw, 72px);
   padding-bottom: 112px;
   background:
     radial-gradient(circle at 78% 16%, rgba(10, 132, 255, 0.18), transparent 30rem),
@@ -106,12 +106,26 @@ body {
   }
 }
 
+.title-slide,
 .split,
-.cover,
 .closing {
-  grid-template-columns: minmax(470px, 0.95fr) minmax(560px, 1.05fr);
-  gap: clamp(34px, 5vw, 78px);
+  grid-template-columns: minmax(430px, 0.92fr) minmax(520px, 1.08fr);
+  gap: clamp(34px, 4.8vw, 72px);
   align-items: center;
+}
+
+.agenda-slide,
+.section-slide {
+  align-content: center;
+}
+
+.agenda-slide .copy,
+.section-slide {
+  max-width: 1180px;
+}
+
+.agenda-slide .copy {
+  width: 100%;
 }
 
 .copy,
@@ -122,11 +136,11 @@ body {
 }
 
 .kicker {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
   color: var(--accent);
-  font-size: 13px;
+  font-size: clamp(12px, 0.9vw, 14px);
   font-weight: 760;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -138,16 +152,16 @@ p {
 
 h1 {
   max-width: 960px;
-  font-size: clamp(66px, 8vw, 124px);
-  line-height: 0.93;
+  font-size: clamp(52px, 6.2vw, 92px);
+  line-height: 0.98;
   font-weight: 780;
   letter-spacing: 0;
 }
 
 h2 {
   max-width: 900px;
-  font-size: clamp(42px, 4.65vw, 72px);
-  line-height: 1.05;
+  font-size: clamp(34px, 3.8vw, 58px);
+  line-height: 1.08;
   font-weight: 780;
   letter-spacing: 0;
 }
@@ -156,18 +170,18 @@ h2 {
 .copy p {
   max-width: 830px;
   color: var(--muted);
-  font-size: clamp(19px, 1.62vw, 25px);
-  line-height: 1.72;
+  font-size: clamp(18px, 1.35vw, 22px);
+  line-height: 1.68;
 }
 
 .lead {
-  margin-top: 28px;
+  margin-top: 24px;
   color: var(--soft);
-  font-size: clamp(22px, 1.9vw, 30px);
+  font-size: clamp(20px, 1.6vw, 26px);
 }
 
 .copy p {
-  margin-top: 22px;
+  margin-top: 18px;
 }
 
 .copy p + p {
@@ -188,7 +202,7 @@ h2 {
 .note {
   padding: 18px 22px;
   color: var(--soft);
-  font-size: clamp(17px, 1.28vw, 21px);
+  font-size: clamp(16px, 1.18vw, 20px);
   line-height: 1.62;
 }
 
@@ -196,7 +210,7 @@ h2 {
   padding: 20px 24px;
   color: var(--text);
   font-family: "SF Mono", Menlo, Consolas, monospace;
-  font-size: clamp(18px, 1.45vw, 25px);
+  font-size: clamp(17px, 1.28vw, 23px);
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
@@ -210,9 +224,113 @@ h2 {
   max-width: 100%;
   padding: 22px 26px;
   color: var(--text);
-  font-size: clamp(24px, 2.6vw, 43px);
+  font-size: clamp(21px, 2.1vw, 34px);
   font-weight: 760;
   line-height: 1.25;
+}
+
+.case-line {
+  max-width: 980px;
+  margin-top: 26px;
+  border: 1px solid rgba(10, 132, 255, 0.5);
+  background:
+    linear-gradient(90deg, rgba(10, 132, 255, 0.14), rgba(255, 255, 255, 0.035)),
+    rgba(255, 255, 255, 0.03);
+  padding: clamp(18px, 2.2vw, 30px);
+  color: var(--text);
+  font-size: clamp(28px, 2.65vw, 42px);
+  font-weight: 780;
+  line-height: 1.22;
+  overflow-wrap: break-word;
+}
+
+.agenda-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 42px;
+}
+
+.agenda-list div {
+  min-height: 210px;
+  border-top: 1px solid var(--line);
+  padding: 22px 8px 0;
+}
+
+.agenda-list b {
+  display: block;
+  color: var(--accent);
+  font-size: clamp(30px, 3.2vw, 52px);
+  line-height: 1;
+}
+
+.agenda-list span {
+  display: block;
+  margin-top: 24px;
+  color: var(--text);
+  font-size: clamp(17px, 1.25vw, 22px);
+  font-weight: 680;
+  line-height: 1.48;
+}
+
+.section-slide {
+  grid-template-columns: 1fr;
+}
+
+.section-slide::after {
+  content: "";
+  position: absolute;
+  right: clamp(42px, 6vw, 110px);
+  top: 50%;
+  z-index: 0;
+  width: min(34vw, 520px);
+  height: min(34vw, 520px);
+  transform: translateY(-50%);
+  border: 1px solid rgba(10, 132, 255, 0.34);
+  background:
+    linear-gradient(90deg, transparent 49.7%, rgba(10, 132, 255, 0.22) 50%, transparent 50.3%),
+    linear-gradient(transparent 49.7%, rgba(10, 132, 255, 0.22) 50%, transparent 50.3%);
+  opacity: 0.42;
+}
+
+.section-mark {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 24px;
+  color: var(--accent);
+  font-size: clamp(18px, 1.5vw, 26px);
+  font-weight: 780;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.section-slide h2,
+.section-slide .lead,
+.section-points {
+  position: relative;
+  z-index: 1;
+}
+
+.section-slide h2 {
+  max-width: 980px;
+  font-size: clamp(40px, 4.5vw, 66px);
+  line-height: 1.06;
+}
+
+.section-points {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 36px;
+}
+
+.section-points span {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 12px 14px;
+  color: var(--soft);
+  font-size: clamp(15px, 1.08vw, 18px);
+  font-weight: 650;
 }
 
 .stage {
@@ -226,6 +344,41 @@ h2 {
     rgba(8, 8, 10, 0.74);
   box-shadow: var(--shadow);
   backdrop-filter: blur(24px);
+}
+
+.title-slide .stage {
+  border-color: rgba(10, 132, 255, 0.28);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(10, 132, 255, 0.12), transparent 34rem),
+    rgba(8, 8, 10, 0.72);
+}
+
+.blueprint-slide .stage,
+.formula-slide .stage {
+  border-top-color: rgba(10, 132, 255, 0.52);
+}
+
+.case-slide {
+  grid-template-columns: minmax(620px, 1.18fr) minmax(420px, 0.82fr);
+}
+
+.case-slide .stage,
+.lab-slide .stage {
+  background:
+    linear-gradient(180deg, rgba(10, 132, 255, 0.075), rgba(255, 255, 255, 0.018)),
+    rgba(5, 5, 7, 0.84);
+}
+
+.analogy-slide {
+  grid-template-columns: minmax(500px, 0.86fr) minmax(600px, 1.14fr);
+}
+
+.hero-formula-slide {
+  grid-template-columns: minmax(560px, 1fr) minmax(560px, 1fr);
+}
+
+.summary-slide .copy {
+  align-self: center;
 }
 
 canvas {
@@ -368,19 +521,46 @@ button:hover {
     padding: 30px 18px 110px;
   }
 
+  .title-slide,
   .split,
-  .cover,
   .closing {
     grid-template-columns: 1fr;
   }
 
   h1 {
-    font-size: clamp(48px, 14vw, 76px);
+    font-size: clamp(42px, 11vw, 66px);
   }
 
   h2 {
-    font-size: clamp(33px, 10vw, 54px);
+    font-size: clamp(30px, 8.6vw, 48px);
     overflow-wrap: anywhere;
+  }
+
+  .section-slide h2 {
+    font-size: clamp(38px, 11vw, 64px);
+  }
+
+  .agenda-list {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 28px;
+  }
+
+  .agenda-list div {
+    min-height: auto;
+    display: grid;
+    grid-template-columns: 70px 1fr;
+    gap: 12px;
+    align-items: start;
+    padding: 16px 0 0;
+  }
+
+  .agenda-list span {
+    margin-top: 0;
+  }
+
+  .case-line {
+    font-size: clamp(28px, 9vw, 44px);
   }
 
   .lead,

@@ -192,7 +192,7 @@ function buildTokenLab(reset) {
   const row = document.querySelector(".token-stream");
   if (!row) return;
   if (!reset && row.children.length) return;
-  const tokens = ["用", "毒", "毒", "毒蛇", "，", "毒蛇", "会不会", "被", "毒", "毒死", "？"];
+  const tokens = ["用", "毒", "毒", "毒蛇", "，", "毒蛇", "会不会", "被", "毒死", "？"];
   row.innerHTML = "";
   tokens.forEach((token, i) => {
     const el = document.createElement("span");
@@ -206,7 +206,7 @@ function buildIds(reset) {
   const row = document.querySelector(".id-stream");
   if (!row) return;
   if (!reset && row.children.length) return;
-  const ids = ["910", "4812", "4812", "33016", "11", "33016", "7642", "928", "4812", "44802", "30"];
+  const ids = ["910", "4812", "4812", "33016", "11", "33016", "7642", "928", "44802", "30"];
   row.innerHTML = "";
   ids.forEach((id, i) => {
     const el = document.createElement("span");
@@ -265,11 +265,11 @@ function drawAiBasics(ctx, w, h, t) {
 
 function drawProblem(ctx, w, h, t) {
   bg(ctx, w, h);
-  const words = ["用", "毒", "毒", "毒蛇", "毒蛇", "被", "毒", "毒死"];
+  const words = ["用", "毒", "毒", "毒蛇", "毒蛇", "会不会", "被", "毒死"];
   const xs = words.map((_, i) => 70 + i * ((w - 140) / (words.length - 1)));
   const y = h * 0.32;
   words.forEach((word, i) => box(ctx, xs[i] - 30, y - 24, 60, 48, word, { stroke: i === Math.floor(t % words.length) ? C.accent : C.line }));
-  [[0, 1], [1, 3], [3, 7], [5, 7], [6, 7]].forEach(([a, b], i) => {
+  [[0, 1], [1, 3], [3, 4], [5, 7], [6, 7]].forEach(([a, b], i) => {
     const active = i === Math.floor(t % 5);
     ctx.strokeStyle = active ? C.accent : "rgba(255,255,255,0.24)";
     ctx.lineWidth = active ? 3 : 1.4;
@@ -283,7 +283,7 @@ function drawProblem(ctx, w, h, t) {
 
 function drawSentence(ctx, w, h, t) {
   bg(ctx, w, h);
-  const parts = [["用", "动作入口"], ["毒", "手段"], ["毒蛇", "实体"], ["被", "被动关系"], ["毒", "施加因素"], ["毒死", "结果"]];
+  const parts = [["用", "动作入口"], ["毒", "手段"], ["毒蛇", "实体"], ["毒蛇", "被影响对象"], ["被", "被动关系"], ["毒死", "结果"]];
   parts.forEach(([word, role], i) => {
     const x = 105 + (i % 3) * 255;
     const y = 118 + Math.floor(i / 3) * 178;
