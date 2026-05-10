@@ -22,6 +22,7 @@ const C = {
 const sceneMap = {
   cover: ["#coverCanvas", drawCover],
   llmMap: ["#llmMapCanvas", drawLlmMap],
+  aiBasics: ["#aiBasicsCanvas", drawAiBasics],
   problem: ["#problemCanvas", drawProblem],
   sentence: ["#sentenceCanvas", drawSentence],
   roles: ["#rolesCanvas", drawRoles],
@@ -230,14 +231,27 @@ function drawCover(ctx, w, h, t) {
 
 function drawLlmMap(ctx, w, h, t) {
   bg(ctx, w, h);
-  const labels = ["上下文", "Token", "向量", "注意力", "概率", "下一个 token"];
+  const labels = ["AI 基础", "LLM", "AI 绘画", "AI 视频", "漫剧 / 环球"];
   const y = h / 2;
   labels.forEach((label, i) => {
-    const x = 64 + i * ((w - 128) / (labels.length - 1));
-    box(ctx, x - 52, y - 42, 104, 84, label, { stroke: i === Math.floor(t % labels.length) ? C.accent : C.line, size: 16 });
-    if (i < labels.length - 1) arrow(ctx, x + 54, y, x + ((w - 128) / (labels.length - 1)) - 58, y, "rgba(10,132,255,0.8)", 2);
+    const x = 95 + i * ((w - 190) / (labels.length - 1));
+    box(ctx, x - 62, y - 44, 124, 88, label, { stroke: i === Math.floor(t % labels.length) ? C.accent : C.line, size: 16 });
+    if (i < labels.length - 1) arrow(ctx, x + 64, y, x + ((w - 190) / (labels.length - 1)) - 58, y, "rgba(10,132,255,0.8)", 2);
   });
-  text(ctx, "P(next token | context)", w / 2, h - 82, 26, C.text, 760);
+  text(ctx, "课程总线：从基础到应用", w / 2, h - 82, 26, C.text, 760);
+}
+
+function drawAiBasics(ctx, w, h, t) {
+  bg(ctx, w, h);
+  const left = [["数据", 0.18], ["参数", 0.42], ["训练", 0.66], ["推理", 0.88]];
+  left.forEach(([label, p], i) => {
+    const x = 96 + i * 170;
+    const y = 140 + Math.sin(t + i) * 18;
+    box(ctx, x, y, 118, 88, label, { stroke: i === Math.floor(t % left.length) ? C.accent : C.line, size: 24 });
+    if (i < left.length - 1) arrow(ctx, x + 126, y + 44, x + 164, y + 44, "rgba(10,132,255,0.8)");
+  });
+  text(ctx, "AI = 从数据中学出参数，再用参数做推理", w / 2, 430, 28, C.text, 760);
+  text(ctx, "生成式 AI 继续向后扩展到文本、图像和视频", w / 2, 480, 18, C.muted, 650);
 }
 
 function drawProblem(ctx, w, h, t) {
