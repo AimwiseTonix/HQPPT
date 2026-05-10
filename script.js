@@ -44,6 +44,13 @@ const sceneMap = {
   attentionFormula: ["#attentionFormulaCanvas", drawAttentionFormula],
   llmWhy: ["#llmWhyCanvas", drawLlmWhy],
   summary: ["#summaryCanvas", drawSummary],
+  imageIntro: ["#imageIntroCanvas", drawImageIntro],
+  clipSpace: ["#clipSpaceCanvas", drawClipSpace],
+  diffusion: ["#diffusionCanvas", drawDiffusion],
+  unet: ["#unetCanvas", drawUnet],
+  latent: ["#latentCanvas", drawLatent],
+  control: ["#controlCanvas", drawControl],
+  imageWorkflow: ["#imageWorkflowCanvas", drawImageWorkflow],
 };
 
 function stopAnimation() {
@@ -212,7 +219,7 @@ function buildIds(reset) {
 function drawCover(ctx, w, h, t) {
   bg(ctx, w, h);
   const cx = w / 2, cy = h / 2;
-  const nodes = ["Token", "Embedding", "Position", "Q", "K", "V", "Softmax", "Context"];
+  const nodes = ["数据", "参数", "文本", "图像", "视频", "控制", "推理", "工作流"];
   nodes.forEach((n, i) => {
     const a = t * 0.28 + (Math.PI * 2 * i) / nodes.length;
     const r = 180 + (i % 2) * 62;
@@ -225,20 +232,22 @@ function drawCover(ctx, w, h, t) {
     ctx.stroke();
     box(ctx, x - 68, y - 24, 136, 48, n, { stroke: i % 2 ? C.line : C.accent, size: 15 });
   });
-  box(ctx, cx - 128, cy - 58, 256, 116, "Transformer", { stroke: C.accent, size: 25, weight: 780 });
-  text(ctx, "context engine", cx, cy + 30, 15, C.muted, 620);
+  box(ctx, cx - 128, cy - 58, 256, 116, "Generative AI", { stroke: C.accent, size: 24, weight: 780 });
+  text(ctx, "learn, control, generate", cx, cy + 30, 15, C.muted, 620);
 }
 
 function drawLlmMap(ctx, w, h, t) {
   bg(ctx, w, h);
-  const labels = ["AI 基础", "LLM", "AI 绘画", "AI 视频", "漫剧 / 环球"];
-  const y = h / 2;
-  labels.forEach((label, i) => {
-    const x = 95 + i * ((w - 190) / (labels.length - 1));
-    box(ctx, x - 62, y - 44, 124, 88, label, { stroke: i === Math.floor(t % labels.length) ? C.accent : C.line, size: 16 });
-    if (i < labels.length - 1) arrow(ctx, x + 64, y, x + ((w - 190) / (labels.length - 1)) - 58, y, "rgba(10,132,255,0.8)", 2);
+  const top = [["样本", 120], ["预测", 330], ["误差", 540], ["更新参数", 720]];
+  top.forEach(([label, x], i) => {
+    box(ctx, x - 64, 150, 128, 72, label, { stroke: i === Math.floor(t % top.length) ? C.accent : C.line, size: 20 });
+    if (i < top.length - 1) arrow(ctx, x + 68, 186, top[i + 1][1] - 70, 186, "rgba(10,132,255,0.8)");
   });
-  text(ctx, "课程总线：从基础到应用", w / 2, h - 82, 26, C.text, 760);
+  box(ctx, 174, 342, 210, 92, "训练阶段", { stroke: C.accent, size: 24 });
+  box(ctx, 520, 342, 210, 92, "推理阶段", { stroke: C.line, size: 24 });
+  arrow(ctx, 386, 388, 514, 388, "rgba(10,132,255,0.8)");
+  text(ctx, "训练：调参数，让预测更接近答案", 279, 468, 17, C.muted, 650);
+  text(ctx, "推理：参数固定，根据输入生成结果", 625, 468, 17, C.muted, 650);
 }
 
 function drawAiBasics(ctx, w, h, t) {
@@ -596,6 +605,139 @@ function drawSummary(ctx, w, h, t) {
     if (i < labels.length - 1) arrow(ctx, x + 54, y, x + ((w - 168) / (labels.length - 1)) - 56, h / 2 + Math.sin(t + i + 1) * 18, "rgba(10,132,255,0.72)");
   });
   text(ctx, "Self-Attention = 可计算的上下文关系", w / 2, 94, 26, C.text, 760);
+}
+
+function drawImageIntro(ctx, w, h, t) {
+  bg(ctx, w, h);
+  box(ctx, 70, 238, 210, 96, "提示词", { stroke: C.accent, size: 26 });
+  text(ctx, "一个人拿着猫粮喂猫", 175, 298, 16, C.muted, 650);
+  arrow(ctx, 288, 286, 400, 286, "rgba(10,132,255,0.85)");
+  box(ctx, 420, 176, 180, 74, "文字向量", { stroke: C.line, size: 21 });
+  box(ctx, 420, 322, 180, 74, "视觉约束", { stroke: C.line, size: 21 });
+  arrow(ctx, 610, 214, 720, 256, "rgba(10,132,255,0.65)");
+  arrow(ctx, 610, 360, 720, 318, "rgba(10,132,255,0.65)");
+  box(ctx, 720, 222, 128, 128, "图像", { stroke: C.accent, size: 28 });
+  text(ctx, "文字不是口令，而是生成条件", w / 2, h - 70, 25, C.text, 760);
+}
+
+function drawClipSpace(ctx, w, h, t) {
+  bg(ctx, w, h);
+  const textPts = [["猫", 0.28, 0.34], ["人", 0.40, 0.56], ["喂食", 0.58, 0.46], ["插画", 0.72, 0.32]];
+  const imgPts = [["猫图", 0.32, 0.38], ["人物图", 0.44, 0.60], ["动作图", 0.61, 0.50], ["风格图", 0.76, 0.36]];
+  ctx.strokeStyle = "rgba(255,255,255,0.16)";
+  ctx.beginPath();
+  ctx.moveTo(110, h - 110);
+  ctx.lineTo(w - 110, h - 110);
+  ctx.moveTo(110, h - 110);
+  ctx.lineTo(110, 90);
+  ctx.stroke();
+  textPts.forEach(([label, px, py], i) => {
+    const x = 110 + px * (w - 220);
+    const y = 90 + py * (h - 210);
+    const x2 = 110 + imgPts[i][1] * (w - 220);
+    const y2 = 90 + imgPts[i][2] * (h - 210);
+    ctx.strokeStyle = i === Math.floor(t % textPts.length) ? C.accent : "rgba(255,255,255,0.2)";
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.fillStyle = C.accent;
+    ctx.beginPath();
+    ctx.arc(x, y, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = C.text;
+    ctx.beginPath();
+    ctx.arc(x2, y2, 7, 0, Math.PI * 2);
+    ctx.fill();
+    text(ctx, label, x + 14, y - 12, 15, C.muted, 650, "left");
+    text(ctx, imgPts[i][0], x2 + 14, y2 + 14, 15, C.muted, 650, "left");
+  });
+  text(ctx, "文字和图片被拉到同一个语义空间", w / 2, h - 60, 24, C.text, 760);
+}
+
+function drawDiffusion(ctx, w, h, t) {
+  bg(ctx, w, h);
+  const steps = ["噪声", "粗轮廓", "结构", "细节", "图像"];
+  steps.forEach((label, i) => {
+    const x = 88 + i * 176;
+    const active = i <= Math.floor((t * 1.2) % steps.length);
+    box(ctx, x, 210, 118, 118, "", { stroke: active ? C.accent : C.line });
+    for (let j = 0; j < 28; j++) {
+      const px = x + 18 + (j % 7) * 12;
+      const py = 230 + Math.floor(j / 7) * 18;
+      ctx.fillStyle = active && j % (i + 2) === 0 ? C.accent : "rgba(255,255,255,0.28)";
+      ctx.globalAlpha = i === 0 ? 0.9 : 0.25 + i * 0.14;
+      ctx.fillRect(px, py, 7, 7);
+      ctx.globalAlpha = 1;
+    }
+    text(ctx, label, x + 59, 360, 17, C.muted, 680);
+    if (i < steps.length - 1) arrow(ctx, x + 122, 268, x + 170, 268, "rgba(10,132,255,0.72)");
+  });
+  text(ctx, "生成 = 在提示词引导下逐步去噪", w / 2, 92, 27, C.text, 760);
+}
+
+function drawUnet(ctx, w, h, t) {
+  bg(ctx, w, h);
+  const left = [[100, 130, 120, 70], [150, 230, 120, 70], [210, 330, 120, 70]];
+  const right = [[680, 130, 120, 70], [630, 230, 120, 70], [570, 330, 120, 70]];
+  left.forEach((b, i) => box(ctx, ...b, ["输入", "压缩", "语义"][i], { stroke: i === Math.floor(t % 3) ? C.accent : C.line, size: 19 }));
+  right.forEach((b, i) => box(ctx, ...b, ["细节", "放大", "输出"][i], { stroke: i === Math.floor(t % 3) ? C.accent : C.line, size: 19 }));
+  arrow(ctx, 220, 165, 150, 230, "rgba(10,132,255,0.65)");
+  arrow(ctx, 270, 265, 210, 330, "rgba(10,132,255,0.65)");
+  arrow(ctx, 330, 365, 570, 365, "rgba(10,132,255,0.8)");
+  arrow(ctx, 690, 365, 630, 300, "rgba(10,132,255,0.65)");
+  arrow(ctx, 750, 265, 680, 200, "rgba(10,132,255,0.65)");
+  [[220, 165, 680, 165], [270, 265, 630, 265], [330, 365, 570, 365]].forEach(([x1, y1, x2, y2]) => {
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.setLineDash([8, 8]);
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  });
+  text(ctx, "U-Net：压缩看整体，跳连保细节，再还原图像", w / 2, h - 70, 23, C.text, 760);
+}
+
+function drawLatent(ctx, w, h, t) {
+  bg(ctx, w, h);
+  box(ctx, 70, 235, 170, 110, "像素图", { stroke: C.line, size: 24 });
+  arrow(ctx, 250, 290, 360, 290, "rgba(10,132,255,0.8)");
+  box(ctx, 382, 210, 150, 160, "Latent", { stroke: C.accent, size: 24 });
+  for (let i = 0; i < 36; i++) {
+    const x = 404 + (i % 6) * 18;
+    const y = 250 + Math.floor(i / 6) * 16;
+    ctx.fillStyle = i % 5 === Math.floor(t % 5) ? C.accent : "rgba(255,255,255,0.28)";
+    ctx.fillRect(x, y, 9, 9);
+  }
+  arrow(ctx, 544, 290, 654, 290, "rgba(10,132,255,0.8)");
+  box(ctx, 676, 235, 170, 110, "高清图", { stroke: C.line, size: 24 });
+  text(ctx, "在压缩空间里生成，再解码回图片", w / 2, h - 72, 24, C.text, 760);
+}
+
+function drawControl(ctx, w, h, t) {
+  bg(ctx, w, h);
+  const rows = [["提示词", "风格与内容"], ["边缘图", "构图轮廓"], ["姿态", "人物动作"], ["遮罩", "局部重绘"]];
+  rows.forEach(([a, b], i) => {
+    const y = 104 + i * 94;
+    box(ctx, 92, y, 132, 58, a, { stroke: i === Math.floor(t % rows.length) ? C.accent : C.line, size: 20 });
+    arrow(ctx, 234, y + 29, 360, y + 29, "rgba(10,132,255,0.72)");
+    box(ctx, 382, y, 300, 58, b, { stroke: C.line, size: 19 });
+  });
+  box(ctx, 714, 205, 96, 180, "生成图", { stroke: C.accent, size: 20 });
+  text(ctx, "控制条件越明确，生成越可控", w / 2, h - 64, 24, C.text, 760);
+}
+
+function drawImageWorkflow(ctx, w, h, t) {
+  bg(ctx, w, h);
+  const steps = ["Prompt", "草图", "控制", "重绘", "放大", "交付"];
+  steps.forEach((label, i) => {
+    const x = 70 + i * 138;
+    const y = h / 2 + Math.sin(t + i) * 12;
+    box(ctx, x, y - 40, 100, 80, label, { stroke: i === Math.floor(t % steps.length) ? C.accent : C.line, size: 17 });
+    if (i < steps.length - 1) arrow(ctx, x + 104, y, x + 134, h / 2 + Math.sin(t + i + 1) * 12, "rgba(10,132,255,0.75)");
+  });
+  text(ctx, "AI 绘画工作流：不是一次出图，而是连续迭代", w / 2, 96, 24, C.text, 760);
 }
 
 showSlide(0);
