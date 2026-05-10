@@ -31,7 +31,10 @@ const sceneMap = {
   positionFormula: ["#positionFormulaCanvas", drawPositionFormula],
   qkv: ["#qkvCanvas", drawQkv],
   queryKeyValue: ["#qkvRolesCanvas", drawQkvRoles],
-  library: ["#libraryCanvas", drawLibrary],
+  libraryAsk: ["#libraryAskCanvas", drawLibraryAsk],
+  libraryMatch: ["#libraryMatchCanvas", drawLibraryMatch],
+  libraryRead: ["#libraryReadCanvas", drawLibraryRead],
+  libraryMerge: ["#libraryMergeCanvas", drawLibraryMerge],
   score: ["#scoreCanvas", drawScore],
   scoreMatrix: ["#scoreMatrixCanvas", drawScoreMatrix],
   scale: ["#scaleCanvas", drawScale],
@@ -102,16 +105,20 @@ function runScene(scene, reset = false) {
   loop(start);
 }
 
-function setup(canvas, aspect = 620 / 900) {
+function setup(canvas) {
   const ctx = canvas.getContext("2d");
   const rect = canvas.getBoundingClientRect();
   const ratio = window.devicePixelRatio || 1;
-  const w = Math.max(1, rect.width);
-  const h = Math.max(1, w * aspect);
-  canvas.width = Math.round(w * ratio);
-  canvas.height = Math.round(h * ratio);
-  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  return { ctx, w, h };
+  const logicalW = 900;
+  const logicalH = 620;
+  const cssW = Math.max(1, rect.width);
+  const cssH = cssW * (logicalH / logicalW);
+  canvas.width = Math.round(cssW * ratio);
+  canvas.height = Math.round(cssH * ratio);
+  const sx = canvas.width / logicalW;
+  const sy = canvas.height / logicalH;
+  ctx.setTransform(sx, 0, 0, sy, 0, 0);
+  return { ctx, w: logicalW, h: logicalH };
 }
 
 function bg(ctx, w, h) {
@@ -379,10 +386,27 @@ function drawQkvRoles(ctx, w, h, t) {
   });
 }
 
-function drawLibrary(ctx, w, h, t) {
+function drawLibraryAsk(ctx, w, h, t) {
   bg(ctx, w, h);
-  box(ctx, 54, h / 2 - 46, 142, 92, "Q 问题", { stroke: C.accent, size: 22 });
-  const books = [["书 A", 0.18], ["书 B", 0.74], ["书 C", 0.40], ["书 D", 0.56], ["书 E", 0.28]];
+  box(ctx, 90, h / 2 - 62, 180, 124, "", { stroke: C.accent });
+  text(ctx, "当前 token", 180, h / 2 - 22, 24, C.text, 760);
+  text(ctx, "带着 Q 进入图书馆", 180, h / 2 + 22, 17, C.muted, 650);
+  const cards = [["问题 1", "我需要动作信息"], ["问题 2", "谁影响了我？"], ["问题 3", "结果是什么？"]];
+  cards.forEach(([a, b], i) => {
+    const x = 390;
+    const y = 150 + i * 112;
+    box(ctx, x, y, 350, 72, "", { stroke: i === Math.floor(t % cards.length) ? C.accent : C.line });
+    text(ctx, a, x + 34, y + 24, 17, C.accent, 720, "left");
+    text(ctx, b, x + 34, y + 50, 18, C.text, 680, "left");
+    arrow(ctx, 276, h / 2, x - 8, y + 36, i === Math.floor(t % cards.length) ? C.accent : "rgba(255,255,255,0.24)");
+  });
+  text(ctx, "Q 不是答案，而是检索意图", w / 2, h - 58, 24, C.text, 760);
+}
+
+function drawLibraryMatch(ctx, w, h, t) {
+  bg(ctx, w, h);
+  box(ctx, 64, h / 2 - 46, 142, 92, "Q 问题", { stroke: C.accent, size: 22 });
+  const books = [["语法书", 0.18], ["毒蛇百科", 0.74], ["动作词典", 0.40], ["因果关系", 0.56], ["结果解释", 0.28]];
   books.forEach(([name, score], i) => {
     const x = 304 + i * 98;
     const y = h / 2 - 98;
@@ -398,7 +422,36 @@ function drawLibrary(ctx, w, h, t) {
     ctx.lineTo(x, y + 92);
     ctx.stroke();
   });
-  text(ctx, "匹配 K，读取 V，形成整合理解", w / 2, h - 54, 24, C.text, 760);
+  text(ctx, "先看书脊标签 K：哪本书最可能回答 Q？", w / 2, h - 54, 24, C.text, 760);
+}
+
+function drawLibraryRead(ctx, w, h, t) {
+  bg(ctx, w, h);
+  const books = [["毒蛇百科", 0.44], ["因果关系", 0.31], ["动作词典", 0.17], ["语法书", 0.08]];
+  books.forEach(([name, weight], i) => {
+    const y = 92 + i * 106;
+    box(ctx, 82, y, 190, 72, name, { stroke: C.line, size: 18 });
+    box(ctx, 340, y + 14, 360, 44, "", { stroke: C.lineSoft, fill: "rgba(255,255,255,0.035)", radius: 10 });
+    ctx.fillStyle = i === Math.floor(t % books.length) ? C.accent : "rgba(255,255,255,0.48)";
+    ctx.fillRect(340, y + 14, 360 * weight * 1.9, 44);
+    text(ctx, `${Math.round(weight * 100)}%`, 742, y + 36, 19, C.muted, 720, "left");
+  });
+  text(ctx, "匹配度变成阅读比例：高权重多读，低权重少读", w / 2, h - 58, 24, C.text, 760);
+}
+
+function drawLibraryMerge(ctx, w, h, t) {
+  bg(ctx, w, h);
+  const sources = [["V₁ 毒蛇百科", 0.44], ["V₂ 因果关系", 0.31], ["V₃ 动作词典", 0.17], ["V₄ 语法书", 0.08]];
+  sources.forEach(([label, weight], i) => {
+    const y = 112 + i * 90;
+    box(ctx, 82, y, 178, 58, label, { stroke: C.line, size: 17 });
+    text(ctx, `× ${weight.toFixed(2)}`, 330, y + 29, 20, i === Math.floor(t % sources.length) ? C.accent : C.muted, 760);
+    arrow(ctx, 405, y + 29, 590, h / 2, i === Math.floor(t % sources.length) ? C.accent : "rgba(255,255,255,0.22)");
+  });
+  box(ctx, 620, h / 2 - 70, 190, 140, "", { stroke: C.accent });
+  text(ctx, "新的理解", 715, h / 2 - 12, 26, C.text, 780);
+  text(ctx, "zᵢ = Σ aᵢⱼvⱼ", 715, h / 2 + 30, 20, C.accent, 720);
+  text(ctx, "离开图书馆时，带走的是整合后的知识", w / 2, h - 58, 24, C.text, 760);
 }
 
 function drawScore(ctx, w, h, t) {
