@@ -1,743 +1,265 @@
-const slides = Array.from(document.querySelectorAll(".slide"));
+const slides = window.COURSE_SLIDES || [];
+const deck = document.querySelector("#deck");
 const prevBtn = document.querySelector("#prevBtn");
 const nextBtn = document.querySelector("#nextBtn");
-const replayBtn = document.querySelector("#replayBtn");
 const fullBtn = document.querySelector("#fullBtn");
+const notesBtn = document.querySelector("#notesBtn");
+const closeNotesBtn = document.querySelector("#closeNotesBtn");
+const notesPanel = document.querySelector("#notesPanel");
+const noteText = document.querySelector("#noteText");
 const slideNo = document.querySelector("#slideNo");
 const progressBar = document.querySelector("#progressBar");
 
-const state = { index: 0, raf: null };
-const C = {
-  bg: "#050506",
-  panel: "#101014",
-  panel2: "#151519",
-  line: "rgba(255,255,255,0.14)",
-  lineSoft: "rgba(255,255,255,0.07)",
-  text: "#f5f5f7",
-  muted: "#a1a1a6",
-  dim: "#6e6e73",
-  accent: "#0a84ff",
-};
+const state = { index: 0 };
 
-const sceneMap = {
-  cover: ["#coverCanvas", drawCover],
-  llmMap: ["#llmMapCanvas", drawLlmMap],
-  aiBasics: ["#aiBasicsCanvas", drawAiBasics],
-  problem: ["#problemCanvas", drawProblem],
-  sentence: ["#sentenceCanvas", drawSentence],
-  roles: ["#rolesCanvas", drawRoles],
-  embedding: ["#embeddingCanvas", drawEmbedding],
-  vectorSpace: ["#vectorSpaceCanvas", drawVectorSpace],
-  position: ["#positionCanvas", drawPosition],
-  positionFormula: ["#positionFormulaCanvas", drawPositionFormula],
-  qkv: ["#qkvCanvas", drawQkv],
-  queryKeyValue: ["#qkvRolesCanvas", drawQkvRoles],
-  libraryAsk: ["#libraryAskCanvas", drawLibraryAsk],
-  libraryMatch: ["#libraryMatchCanvas", drawLibraryMatch],
-  libraryRead: ["#libraryReadCanvas", drawLibraryRead],
-  libraryMerge: ["#libraryMergeCanvas", drawLibraryMerge],
-  score: ["#scoreCanvas", drawScore],
-  scoreMatrix: ["#scoreMatrixCanvas", drawScoreMatrix],
-  scale: ["#scaleCanvas", drawScale],
-  softmax: ["#softmaxCanvas", drawSoftmax],
-  weighted: ["#weightedCanvas", drawWeighted],
-  attentionFormula: ["#attentionFormulaCanvas", drawAttentionFormula],
-  llmWhy: ["#llmWhyCanvas", drawLlmWhy],
-  summary: ["#summaryCanvas", drawSummary],
-  imageIntro: ["#imageIntroCanvas", drawImageIntro],
-  clipSpace: ["#clipSpaceCanvas", drawClipSpace],
-  diffusion: ["#diffusionCanvas", drawDiffusion],
-  unet: ["#unetCanvas", drawUnet],
-  latent: ["#latentCanvas", drawLatent],
-  control: ["#controlCanvas", drawControl],
-  imageWorkflow: ["#imageWorkflowCanvas", drawImageWorkflow],
-};
+function escapeHtml(value = "") {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
-function stopAnimation() {
-  if (state.raf) cancelAnimationFrame(state.raf);
-  state.raf = null;
+function renderDeck() {
+  deck.innerHTML = slides.map(renderSlide).join("");
+}
+
+function renderSlide(slide) {
+  const titleTag = slide.id === 1 ? "h1" : "h2";
+  const source = slide.source ? `<div class="source">参考：${escapeHtml(slide.source)}</div>` : "";
+  return `
+    <section class="slide layout-${slide.layout}" data-id="${slide.id}">
+      <div class="copy">
+        <div class="eyebrow">${escapeHtml(slide.eyebrow)}</div>
+        <${titleTag}>${escapeHtml(slide.title)}</${titleTag}>
+        <p class="core">${escapeHtml(slide.core)}</p>
+        ${renderBullets(slide)}
+      </div>
+      ${renderVisual(slide)}
+      ${source}
+    </section>
+  `;
+}
+
+function renderBullets(slide) {
+  if (slide.layout === "chapter") {
+    return `<ul class="bullets"><li>${escapeHtml(slide.sectionIntent)}</li><li>建议讲授时长：${escapeHtml(slide.chapterTime)}</li></ul>`;
+  }
+  if (slide.layout === "hero" && slide.id !== 1) {
+    return `<ul class="bullets">${slide.bullets.slice(0, 2).map((b) => `<li>${escapeHtml(b)}</li>`).join("")}</ul>`;
+  }
+  return `<ul class="bullets">${slide.bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join("")}</ul>`;
+}
+
+function renderVisual(slide) {
+  if (slide.layout === "hero" || slide.layout === "chapter") {
+    return "";
+  }
+  const visual = slide.visual || { type: "diagram", variant: "network" };
+  if (visual.type === "image" || visual.type === "gif") {
+    return `
+      <div class="visual media-fit">
+        <img src="${escapeHtml(visual.src)}" alt="${escapeHtml(visual.caption || slide.title)}" />
+        <div class="caption">${escapeHtml(visual.caption || "")}</div>
+      </div>
+    `;
+  }
+  if (visual.type === "stats") {
+    return `
+      <div class="visual">
+        <div class="stat-row">
+          <div class="stat-card"><strong>¥1000亿+</strong><span>参考 PPT：2025 年微短剧市场规模</span></div>
+          <div class="stat-card"><strong>6.9亿</strong><span>参考 PPT：短剧用户规模</span></div>
+          <div class="stat-card"><strong>120.5分钟</strong><span>参考 PPT：人均单日使用时长</span></div>
+        </div>
+        <div class="caption">${escapeHtml(visual.caption || "")}</div>
+      </div>
+    `;
+  }
+  if (visual.type === "timeline") {
+    return `
+      <div class="visual">
+        <div class="timeline-row">
+          <div class="timeline-card"><strong>01</strong><b>培训 + 试点</b><span>1-2 个月，建立工具认知，完成 1-2 部试验作品。</span></div>
+          <div class="timeline-card"><strong>02</strong><b>优化 + 放量</b><span>3-6 个月，形成 SOP、素材库、审核机制和多平台发布节奏。</span></div>
+          <div class="timeline-card"><strong>03</strong><b>生态 + 变现</b><span>6-12 个月，形成系列内容、UGC 生态和商业化探索。</span></div>
+        </div>
+        <div class="caption">${escapeHtml(visual.caption || "")}</div>
+      </div>
+    `;
+  }
+  return `
+    <div class="visual">
+      ${renderDiagram(visual.variant, slide)}
+      <div class="caption">${escapeHtml(visual.caption || "")}</div>
+    </div>
+  `;
+}
+
+function renderDiagram(variant, slide) {
+  const diagrams = {
+    basic_loop: arrowRow([
+      ["例子", "文本 / 图片 / 视频"],
+      ["训练", "反复预测与改错"],
+      ["参数", "沉淀成模型经验"],
+    ]),
+    tokens: arrowRow([
+      ["文字", "用毒毒毒蛇"],
+      ["Token", "切成可处理小块"],
+      ["向量", "变成语义坐标"],
+    ]),
+    attention: `
+      <div class="diagram">
+        <div class="big-node"><b>注意力</b><span>不是公式开始，而是先回答：当前词应该重点参考谁？</span><div class="formula-lite">关注度高 → 多读<br />关注度低 → 少读</div></div>
+      </div>
+    `,
+    case_sentence: `
+      <div class="diagram">
+        <div class="big-node" style="width:min(92%,760px)">
+          <b style="font-size:42px">用毒毒毒蛇，毒蛇会不会被毒死？</b>
+          <span>同一个“毒”，在不同位置承担不同角色</span>
+          <div class="diagram-grid" style="margin-top:18px">
+            <div class="node"><b>用毒</b><span>手段</span></div>
+            <div class="node"><b>毒蛇</b><span>属性 + 实体</span></div>
+            <div class="node"><b>被毒死</b><span>结果</span></div>
+          </div>
+        </div>
+      </div>
+    `,
+    diffusion: arrowRow([
+      ["噪声", "随机起点"],
+      ["去噪", "一步步擦掉不需要的部分"],
+      ["图像", "符合提示词的结果"],
+    ]),
+    diffusion_formula: `
+      <div class="diagram">
+        <div class="arrow-row">
+          <div class="node"><b>清晰图</b><span>x₀</span></div>
+          <div class="arrow">+</div>
+          <div class="node"><b>逐步加噪</b><span>xₜ = √αₜx₀ + √(1-αₜ)ε</span></div>
+          <div class="arrow">⇄</div>
+          <div class="node"><b>预测噪声</b><span>εθ(xₜ, t, text)</span></div>
+        </div>
+        <div class="formula-lite" style="margin-top:30px">训练：学会预测噪声<br />生成：从噪声一步步还原图像</div>
+      </div>
+    `,
+    unet: `
+      <div class="diagram">
+        <div class="diagram-grid">
+          <div class="node"><b>压缩</b><span>看整体结构</span></div>
+          <div class="node"><b>瓶颈</b><span>理解语义</span></div>
+          <div class="node"><b>还原</b><span>补回细节</span></div>
+        </div>
+      </div>
+    `,
+    clip: arrowRow([
+      ["文字", "一只猫坐在窗边"],
+      ["语义空间", "把文字和图片拉近"],
+      ["图像", "猫 / 窗 / 光线 / 风格"],
+    ]),
+    spacetime: arrowRow([
+      ["宽", "画面横向"],
+      ["高", "画面纵向"],
+      ["时间", "前后帧关系"],
+    ]),
+    video_attention: `
+      <div class="diagram">
+        <div class="diagram-grid">
+          <div class="node"><b>第 1 帧</b><span>角色脸</span></div>
+          <div class="node"><b>第 8 帧</b><span>服装延续</span></div>
+          <div class="node"><b>第 16 帧</b><span>场景光线</span></div>
+        </div>
+        <div class="formula-lite" style="margin-top:28px">跨帧通信 = 减少闪烁、变脸、跳变</div>
+      </div>
+    `,
+    pipeline: arrowRow([
+      ["剧本", "人物与冲突"],
+      ["画面", "角色 / 分镜 / 场景"],
+      ["视频", "镜头 / 配音 / 剪辑"],
+    ]),
+    tourism: arrowRow([
+      ["内容种草", "短剧触达"],
+      ["线下打卡", "场景体验"],
+      ["二次传播", "UGC 与转化"],
+    ]),
+    business_loop: arrowRow([
+      ["市场", "短剧入口"],
+      ["能力", "AI 降本提速"],
+      ["落地", "IP 场景运营"],
+    ]),
+    network: arrowRow([
+      ["输入", slide.section],
+      ["计算", "关系 / 约束 / 控制"],
+      ["输出", slide.title],
+    ]),
+  };
+  return diagrams[variant] || diagrams.network;
+}
+
+function arrowRow(items) {
+  return `
+    <div class="diagram">
+      <div class="arrow-row">
+        <div class="node"><b>${escapeHtml(items[0][0])}</b><span>${escapeHtml(items[0][1])}</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>${escapeHtml(items[1][0])}</b><span>${escapeHtml(items[1][1])}</span></div>
+        <div class="arrow">→</div>
+        <div class="node"><b>${escapeHtml(items[2][0])}</b><span>${escapeHtml(items[2][1])}</span></div>
+      </div>
+    </div>
+  `;
+}
+
+function noteFor(slide) {
+  const first = {
+    opening: "先建立方向感：这门课不是工具演示，而是解释 AIGC 为什么能从文字走到图像、视频和内容生产。",
+    basics: "这一页用大白话讲。先举生活例子，再落到 AI 概念，避免像教材定义。",
+    llm: "这一页只讲直觉，不讲公式。重点是让听众理解上下文关系。",
+    image: "这一页围绕图像生成的具体难题展开：语义、布局、文字、局部修改或工作流。",
+    video: "这一页强调视频多了时间维度，所以要处理一致性、运动、物理和镜头。",
+    comic: "这一页把模型能力落到内容生产流程，不把 AI 漫剧讲成一键生成。",
+    universal: "这一页结合参考 PPT，用市场、IP、场景、合规、运营判断可行性。",
+    closing: "这一页负责收束，把复杂内容压回听众能带走的判断框架。",
+  }[slide.sectionKey] || "这一页讲清楚一个观点即可。";
+  return `${first}\n\n页面核心：${slide.core}\n\n讲法：先解释标题，再给一个具体例子，最后用一句话过渡到下一页。`;
 }
 
 function showSlide(index) {
   const next = Math.max(0, Math.min(slides.length - 1, index));
   state.index = next;
-  stopAnimation();
-  slides.forEach((slide, i) => {
+  const nodes = Array.from(document.querySelectorAll(".slide"));
+  nodes.forEach((slide, i) => {
     slide.classList.toggle("active", i === next);
     slide.classList.remove("enter");
   });
-  const active = slides[next];
+  const active = nodes[next];
   requestAnimationFrame(() => active.classList.add("enter"));
   slideNo.textContent = `${next + 1} / ${slides.length}`;
   progressBar.style.width = `${((next + 1) / slides.length) * 100}%`;
-  runScene(active.dataset.scene, true);
+  noteText.textContent = noteFor(slides[next]);
 }
 
-function replay() {
-  stopAnimation();
-  const active = slides[state.index];
-  active.classList.remove("enter");
-  void active.offsetWidth;
-  active.classList.add("enter");
-  runScene(active.dataset.scene, true);
+function toggleNotes(force) {
+  const open = typeof force === "boolean" ? force : !notesPanel.classList.contains("open");
+  notesPanel.classList.toggle("open", open);
+  notesPanel.setAttribute("aria-hidden", String(!open));
 }
+
+renderDeck();
+showSlide(0);
 
 prevBtn.addEventListener("click", () => showSlide(state.index - 1));
 nextBtn.addEventListener("click", () => showSlide(state.index + 1));
-replayBtn.addEventListener("click", replay);
+notesBtn.addEventListener("click", () => toggleNotes());
+closeNotesBtn.addEventListener("click", () => toggleNotes(false));
 fullBtn.addEventListener("click", () => {
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen();
 });
+
 document.addEventListener("keydown", (event) => {
   if (event.key === "ArrowRight" || event.key === " ") showSlide(state.index + 1);
   if (event.key === "ArrowLeft") showSlide(state.index - 1);
-  if (event.key.toLowerCase() === "r") replay();
+  if (event.key.toLowerCase() === "n") toggleNotes();
   if (event.key.toLowerCase() === "f") fullBtn.click();
 });
-
-function runScene(scene, reset = false) {
-  if (scene === "tokens") buildTokenLab(reset);
-  if (scene === "ids") buildIds(reset);
-  const config = sceneMap[scene];
-  if (!config) return;
-  const [selector, draw] = config;
-  const canvas = document.querySelector(selector);
-  if (!canvas) return;
-  const start = performance.now();
-  const loop = (now) => {
-    const { ctx, w, h } = setup(canvas);
-    draw(ctx, w, h, (now - start) / 1000);
-    state.raf = requestAnimationFrame(loop);
-  };
-  loop(start);
-}
-
-function setup(canvas) {
-  const ctx = canvas.getContext("2d");
-  const rect = canvas.getBoundingClientRect();
-  const ratio = window.devicePixelRatio || 1;
-  const logicalW = 900;
-  const logicalH = 620;
-  const cssW = Math.max(1, rect.width);
-  const cssH = cssW * (logicalH / logicalW);
-  canvas.width = Math.round(cssW * ratio);
-  canvas.height = Math.round(cssH * ratio);
-  const sx = canvas.width / logicalW;
-  const sy = canvas.height / logicalH;
-  ctx.setTransform(sx, 0, 0, sy, 0, 0);
-  return { ctx, w: logicalW, h: logicalH };
-}
-
-function bg(ctx, w, h) {
-  ctx.fillStyle = C.bg;
-  ctx.fillRect(0, 0, w, h);
-  ctx.strokeStyle = "rgba(255,255,255,0.035)";
-  ctx.lineWidth = 1;
-  for (let x = 0; x <= w; x += 44) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, h);
-    ctx.stroke();
-  }
-  for (let y = 0; y <= h; y += 44) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(w, y);
-    ctx.stroke();
-  }
-}
-
-function text(ctx, s, x, y, size = 18, color = C.text, weight = 650, align = "center") {
-  ctx.fillStyle = color;
-  ctx.font = `${weight} ${size}px -apple-system, BlinkMacSystemFont, PingFang SC, Arial`;
-  ctx.textAlign = align;
-  ctx.textBaseline = "middle";
-  ctx.fillText(s, x, y);
-}
-
-function box(ctx, x, y, w, h, label = "", opt = {}) {
-  ctx.fillStyle = opt.fill || C.panel;
-  ctx.strokeStyle = opt.stroke || C.line;
-  ctx.lineWidth = opt.lineWidth || 1;
-  ctx.beginPath();
-  ctx.roundRect(x, y, w, h, opt.radius || 16);
-  ctx.fill();
-  ctx.stroke();
-  if (label) text(ctx, label, x + w / 2, y + h / 2, opt.size || 18, opt.color || C.text, opt.weight || 700);
-}
-
-function arrow(ctx, x1, y1, x2, y2, color = C.accent, width = 2) {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = width;
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
-  const a = Math.atan2(y2 - y1, x2 - x1);
-  ctx.beginPath();
-  ctx.moveTo(x2, y2);
-  ctx.lineTo(x2 - 12 * Math.cos(a - 0.46), y2 - 12 * Math.sin(a - 0.46));
-  ctx.lineTo(x2 - 12 * Math.cos(a + 0.46), y2 - 12 * Math.sin(a + 0.46));
-  ctx.closePath();
-  ctx.fillStyle = color;
-  ctx.fill();
-}
-
-function pulse(t, shift = 0) {
-  return 0.5 + 0.5 * Math.sin(t * 2 + shift);
-}
-
-function buildTokenLab(reset) {
-  const row = document.querySelector(".token-stream");
-  if (!row) return;
-  if (!reset && row.children.length) return;
-  const tokens = ["用", "毒", "毒", "毒蛇", "，", "毒蛇", "会不会", "被", "毒死", "？"];
-  row.innerHTML = "";
-  tokens.forEach((token, i) => {
-    const el = document.createElement("span");
-    el.textContent = token;
-    el.style.animationDelay = `${i * 46}ms`;
-    row.appendChild(el);
-  });
-}
-
-function buildIds(reset) {
-  const row = document.querySelector(".id-stream");
-  if (!row) return;
-  if (!reset && row.children.length) return;
-  const ids = ["910", "4812", "4812", "33016", "11", "33016", "7642", "928", "44802", "30"];
-  row.innerHTML = "";
-  ids.forEach((id, i) => {
-    const el = document.createElement("span");
-    el.textContent = id;
-    el.style.animationDelay = `${i * 46}ms`;
-    row.appendChild(el);
-  });
-}
-
-function drawCover(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const cx = w / 2, cy = h / 2;
-  const nodes = ["数据", "参数", "文本", "图像", "视频", "控制", "推理", "工作流"];
-  nodes.forEach((n, i) => {
-    const a = t * 0.28 + (Math.PI * 2 * i) / nodes.length;
-    const r = 180 + (i % 2) * 62;
-    const x = cx + Math.cos(a) * r;
-    const y = cy + Math.sin(a) * r;
-    ctx.strokeStyle = "rgba(10,132,255,0.22)";
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    box(ctx, x - 68, y - 24, 136, 48, n, { stroke: i % 2 ? C.line : C.accent, size: 15 });
-  });
-  box(ctx, cx - 128, cy - 58, 256, 116, "Generative AI", { stroke: C.accent, size: 24, weight: 780 });
-  text(ctx, "learn, control, generate", cx, cy + 30, 15, C.muted, 620);
-}
-
-function drawLlmMap(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const top = [["样本", 120], ["预测", 330], ["误差", 540], ["更新参数", 720]];
-  top.forEach(([label, x], i) => {
-    box(ctx, x - 64, 150, 128, 72, label, { stroke: i === Math.floor(t % top.length) ? C.accent : C.line, size: 20 });
-    if (i < top.length - 1) arrow(ctx, x + 68, 186, top[i + 1][1] - 70, 186, "rgba(10,132,255,0.8)");
-  });
-  box(ctx, 174, 342, 210, 92, "训练阶段", { stroke: C.accent, size: 24 });
-  box(ctx, 520, 342, 210, 92, "推理阶段", { stroke: C.line, size: 24 });
-  arrow(ctx, 386, 388, 514, 388, "rgba(10,132,255,0.8)");
-  text(ctx, "训练：调参数，让预测更接近答案", 279, 468, 17, C.muted, 650);
-  text(ctx, "推理：参数固定，根据输入生成结果", 625, 468, 17, C.muted, 650);
-}
-
-function drawAiBasics(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const left = [["数据", 0.18], ["参数", 0.42], ["训练", 0.66], ["推理", 0.88]];
-  left.forEach(([label, p], i) => {
-    const x = 96 + i * 170;
-    const y = 140 + Math.sin(t + i) * 18;
-    box(ctx, x, y, 118, 88, label, { stroke: i === Math.floor(t % left.length) ? C.accent : C.line, size: 24 });
-    if (i < left.length - 1) arrow(ctx, x + 126, y + 44, x + 164, y + 44, "rgba(10,132,255,0.8)");
-  });
-  text(ctx, "AI = 从数据中学出参数，再用参数做推理", w / 2, 430, 28, C.text, 760);
-  text(ctx, "生成式 AI 继续向后扩展到文本、图像和视频", w / 2, 480, 18, C.muted, 650);
-}
-
-function drawProblem(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const words = ["用", "毒", "毒", "毒蛇", "毒蛇", "会不会", "被", "毒死"];
-  const xs = words.map((_, i) => 70 + i * ((w - 140) / (words.length - 1)));
-  const y = h * 0.32;
-  words.forEach((word, i) => box(ctx, xs[i] - 30, y - 24, 60, 48, word, { stroke: i === Math.floor(t % words.length) ? C.accent : C.line }));
-  [[0, 1], [1, 3], [3, 4], [5, 7], [6, 7]].forEach(([a, b], i) => {
-    const active = i === Math.floor(t % 5);
-    ctx.strokeStyle = active ? C.accent : "rgba(255,255,255,0.24)";
-    ctx.lineWidth = active ? 3 : 1.4;
-    ctx.beginPath();
-    ctx.moveTo(xs[a], y + 34);
-    ctx.quadraticCurveTo((xs[a] + xs[b]) / 2, y + 132 + i * 14, xs[b], y + 34);
-    ctx.stroke();
-  });
-  text(ctx, "语义 = token 之间的关系网络", w / 2, h - 78, 26, C.text, 760);
-}
-
-function drawSentence(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const parts = [["用", "动作入口"], ["毒", "手段"], ["毒蛇", "实体"], ["毒蛇", "被影响对象"], ["被", "被动关系"], ["毒死", "结果"]];
-  parts.forEach(([word, role], i) => {
-    const x = 105 + (i % 3) * 255;
-    const y = 118 + Math.floor(i / 3) * 178;
-    box(ctx, x, y, 180, 104, "", { stroke: i === Math.floor(t % parts.length) ? C.accent : C.line });
-    text(ctx, word, x + 90, y + 38, 30, C.text, 780);
-    text(ctx, role, x + 90, y + 74, 17, C.muted, 650);
-  });
-  text(ctx, "同形字符，角色不同", w / 2, h - 62, 25, C.text, 760);
-}
-
-function drawRoles(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const cx = w / 2, cy = h / 2;
-  box(ctx, cx - 78, cy - 42, 156, 84, "毒", { stroke: C.accent, size: 42 });
-  const roles = [["名词", 0], ["动词", 1], ["形容词", 2], ["结果词组", 3], ["实体修饰", 4]];
-  roles.forEach(([r, i]) => {
-    const a = t * 0.2 + (Math.PI * 2 * i) / roles.length;
-    const x = cx + Math.cos(a) * 245;
-    const y = cy + Math.sin(a) * 170;
-    arrow(ctx, cx + Math.cos(a) * 86, cy + Math.sin(a) * 48, x - Math.cos(a) * 58, y - Math.sin(a) * 28, i === Math.floor(t % roles.length) ? C.accent : "rgba(255,255,255,0.28)", 1.8);
-    box(ctx, x - 72, y - 30, 144, 60, r, { stroke: i === Math.floor(t % roles.length) ? C.accent : C.line, size: 18 });
-  });
-}
-
-function drawEmbedding(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const tokens = ["毒", "毒蛇", "毒死"];
-  tokens.forEach((token, i) => {
-    const y = 118 + i * 148;
-    box(ctx, 58, y - 34, 116, 68, token, { stroke: C.line, size: 23 });
-    arrow(ctx, 186, y, 280, y);
-    for (let j = 0; j < 14; j++) {
-      const x = 304 + j * 36;
-      const v = Math.abs(Math.sin(t + i * 1.2 + j * 0.55));
-      box(ctx, x, y - 32, 24, 64, "", { radius: 8, stroke: C.lineSoft, fill: "#0c0c0f" });
-      ctx.fillStyle = j % 4 === 0 ? C.accent : C.text;
-      ctx.globalAlpha = 0.22 + v * 0.58;
-      ctx.fillRect(x + 6, y + 25, 12, -v * 50);
-      ctx.globalAlpha = 1;
-    }
-  });
-  text(ctx, "ID 查表 → 高维向量", w / 2, 44, 24, C.text, 760);
-}
-
-function drawVectorSpace(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const pts = [
-    ["毒蛇", 0.38, 0.38], ["蛇类", 0.44, 0.45], ["动物", 0.50, 0.32],
-    ["毒死", 0.66, 0.58], ["中毒", 0.70, 0.48], ["用毒", 0.58, 0.70],
-  ];
-  ctx.strokeStyle = "rgba(255,255,255,0.18)";
-  ctx.beginPath();
-  ctx.moveTo(105, h - 105);
-  ctx.lineTo(w - 105, h - 105);
-  ctx.moveTo(105, h - 105);
-  ctx.lineTo(105, 82);
-  ctx.stroke();
-  pts.forEach(([label, px, py], i) => {
-    const x = 105 + px * (w - 210);
-    const y = 82 + py * (h - 190);
-    const r = 7 + pulse(t, i) * 4;
-    ctx.fillStyle = i === Math.floor(t % pts.length) ? C.accent : C.text;
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-    text(ctx, label, x + 14, y - 14, 16, C.muted, 650, "left");
-  });
-  text(ctx, "距离和方向编码用法相似性", w / 2, h - 54, 24, C.text, 760);
-}
-
-function drawPosition(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const tokens = ["用", "毒", "毒蛇", "被", "毒死"];
-  tokens.forEach((token, i) => {
-    const x = 92 + i * ((w - 184) / (tokens.length - 1));
-    box(ctx, x - 48, 110, 96, 58, token, { stroke: C.line, size: 19 });
-    box(ctx, x - 48, 240, 96, 58, `pos ${i}`, { stroke: i === Math.floor(t % tokens.length) ? C.accent : C.line, size: 17, color: C.accent });
-    arrow(ctx, x, 172, x, 236, "rgba(10,132,255,0.8)");
-  });
-  text(ctx, "token 向量 + 位置向量 = 有顺序的输入", w / 2, h - 78, 24, C.text, 760);
-}
-
-function drawPositionFormula(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const left = 70, right = w - 70, top = 96, bottom = h - 122;
-  [[1, C.accent], [2, C.text], [4, C.dim], [8, "rgba(255,255,255,0.32)"]].forEach(([freq, color], i) => {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = i === 0 ? 3 : 1.7;
-    ctx.beginPath();
-    for (let x = left; x <= right; x += 3) {
-      const p = (x - left) / (right - left);
-      const y = top + (bottom - top) * (0.5 + Math.sin(p * Math.PI * 2 * freq + t * 0.8 + i) * 0.22);
-      if (x === left) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-  });
-  text(ctx, "多频率曲线叠加，给位置生成指纹", w / 2, h - 60, 24, C.text, 760);
-}
-
-function drawQkv(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const cx = 120, cy = h / 2;
-  box(ctx, cx - 52, cy - 52, 104, 104, "X", { stroke: C.accent, size: 34 });
-  [["Q", "想找什么", 390, 122], ["K", "如何被找", 548, h / 2], ["V", "贡献内容", 708, h - 176]].forEach(([name, desc, x, y], i) => {
-    arrow(ctx, cx + 62, cy, x - 86, y, i === Math.floor(t % 3) ? C.accent : "rgba(255,255,255,0.34)", 2);
-    box(ctx, x - 76, y - 44, 152, 88, "", { stroke: i === Math.floor(t % 3) ? C.accent : C.line });
-    text(ctx, name, x, y - 12, 34, i === Math.floor(t % 3) ? C.accent : C.text, 780);
-    text(ctx, desc, x, y + 25, 16, C.muted, 650);
-  });
-}
-
-function drawQkvRoles(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const rows = [["Q", "搜索请求", "我现在需要什么？"], ["K", "索引标签", "我适合回答什么？"], ["V", "正文内容", "我真正贡献什么？"]];
-  rows.forEach(([a, b, c], i) => {
-    const y = 110 + i * 132;
-    box(ctx, 76, y, 90, 74, a, { stroke: i === Math.floor(t % 3) ? C.accent : C.line, size: 32, color: i === Math.floor(t % 3) ? C.accent : C.text });
-    box(ctx, 206, y, 190, 74, b, { stroke: C.line, size: 22 });
-    box(ctx, 438, y, 330, 74, c, { stroke: C.line, size: 20, color: C.muted });
-    arrow(ctx, 168, y + 37, 202, y + 37, "rgba(10,132,255,0.75)");
-    arrow(ctx, 398, y + 37, 434, y + 37, "rgba(10,132,255,0.75)");
-  });
-}
-
-function drawLibraryAsk(ctx, w, h, t) {
-  bg(ctx, w, h);
-  box(ctx, 90, h / 2 - 62, 180, 124, "", { stroke: C.accent });
-  text(ctx, "当前 token", 180, h / 2 - 22, 24, C.text, 760);
-  text(ctx, "带着 Q 进入图书馆", 180, h / 2 + 22, 17, C.muted, 650);
-  const cards = [["问题 1", "我需要动作信息"], ["问题 2", "谁影响了我？"], ["问题 3", "结果是什么？"]];
-  cards.forEach(([a, b], i) => {
-    const x = 390;
-    const y = 150 + i * 112;
-    box(ctx, x, y, 350, 72, "", { stroke: i === Math.floor(t % cards.length) ? C.accent : C.line });
-    text(ctx, a, x + 34, y + 24, 17, C.accent, 720, "left");
-    text(ctx, b, x + 34, y + 50, 18, C.text, 680, "left");
-    arrow(ctx, 276, h / 2, x - 8, y + 36, i === Math.floor(t % cards.length) ? C.accent : "rgba(255,255,255,0.24)");
-  });
-  text(ctx, "Q 不是答案，而是检索意图", w / 2, h - 58, 24, C.text, 760);
-}
-
-function drawLibraryMatch(ctx, w, h, t) {
-  bg(ctx, w, h);
-  box(ctx, 64, h / 2 - 46, 142, 92, "Q 问题", { stroke: C.accent, size: 22 });
-  const books = [["语法书", 0.18], ["毒蛇百科", 0.74], ["动作词典", 0.40], ["因果关系", 0.56], ["结果解释", 0.28]];
-  books.forEach(([name, score], i) => {
-    const x = 304 + i * 98;
-    const y = h / 2 - 98;
-    const active = score > 0.55 || i === Math.floor(t % books.length);
-    box(ctx, x, y, 70, 196, "", { stroke: active ? C.accent : C.line, radius: 10 });
-    text(ctx, name, x + 35, y + 42, 17, C.text, 720);
-    text(ctx, "K", x + 35, y + 92, 20, C.accent, 760);
-    text(ctx, "V", x + 35, y + 142, 20, C.muted, 760);
-    ctx.strokeStyle = active ? C.accent : "rgba(255,255,255,0.22)";
-    ctx.lineWidth = 1 + score * 4;
-    ctx.beginPath();
-    ctx.moveTo(198, h / 2);
-    ctx.lineTo(x, y + 92);
-    ctx.stroke();
-  });
-  text(ctx, "先看书脊标签 K：哪本书最可能回答 Q？", w / 2, h - 54, 24, C.text, 760);
-}
-
-function drawLibraryRead(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const books = [["毒蛇百科", 0.44], ["因果关系", 0.31], ["动作词典", 0.17], ["语法书", 0.08]];
-  books.forEach(([name, weight], i) => {
-    const y = 92 + i * 106;
-    box(ctx, 82, y, 190, 72, name, { stroke: C.line, size: 18 });
-    box(ctx, 340, y + 14, 360, 44, "", { stroke: C.lineSoft, fill: "rgba(255,255,255,0.035)", radius: 10 });
-    ctx.fillStyle = i === Math.floor(t % books.length) ? C.accent : "rgba(255,255,255,0.48)";
-    ctx.fillRect(340, y + 14, 360 * weight * 1.9, 44);
-    text(ctx, `${Math.round(weight * 100)}%`, 742, y + 36, 19, C.muted, 720, "left");
-  });
-  text(ctx, "匹配度变成阅读比例：高权重多读，低权重少读", w / 2, h - 58, 24, C.text, 760);
-}
-
-function drawLibraryMerge(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const sources = [["V₁ 毒蛇百科", 0.44], ["V₂ 因果关系", 0.31], ["V₃ 动作词典", 0.17], ["V₄ 语法书", 0.08]];
-  sources.forEach(([label, weight], i) => {
-    const y = 112 + i * 90;
-    box(ctx, 82, y, 178, 58, label, { stroke: C.line, size: 17 });
-    text(ctx, `× ${weight.toFixed(2)}`, 330, y + 29, 20, i === Math.floor(t % sources.length) ? C.accent : C.muted, 760);
-    arrow(ctx, 405, y + 29, 590, h / 2, i === Math.floor(t % sources.length) ? C.accent : "rgba(255,255,255,0.22)");
-  });
-  box(ctx, 620, h / 2 - 70, 190, 140, "", { stroke: C.accent });
-  text(ctx, "新的理解", 715, h / 2 - 12, 26, C.text, 780);
-  text(ctx, "zᵢ = Σ aᵢⱼvⱼ", 715, h / 2 + 30, 20, C.accent, 720);
-  text(ctx, "离开图书馆时，带走的是整合后的知识", w / 2, h - 58, 24, C.text, 760);
-}
-
-function drawScore(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const row = Math.floor(t % 5);
-  const words = ["用", "毒", "毒蛇", "被", "毒死"];
-  words.forEach((word, i) => {
-    const y = 108 + i * 78;
-    box(ctx, 80, y, 94, 50, word, { stroke: i === row ? C.accent : C.line, size: 18 });
-    box(ctx, w - 174, y, 94, 50, word, { stroke: C.line, size: 18 });
-    const active = i === row || i === (row + 2) % 5;
-    ctx.strokeStyle = active ? C.accent : "rgba(255,255,255,0.22)";
-    ctx.lineWidth = active ? 3 : 1.2;
-    ctx.beginPath();
-    ctx.moveTo(178, 133 + row * 78);
-    ctx.bezierCurveTo(320, 133 + row * 78, 510, 133 + i * 78, w - 178, 133 + i * 78);
-    ctx.stroke();
-  });
-  text(ctx, "qᵢ · kⱼ", w / 2, h / 2, 42, C.text, 780);
-}
-
-function drawScoreMatrix(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const words = ["用", "毒", "毒蛇", "被", "毒死"];
-  const vals = [
-    [0.12, 0.80, 0.36, 0.10, 0.16],
-    [0.09, 0.28, 0.62, 0.18, 0.42],
-    [0.08, 0.24, 0.76, 0.24, 0.48],
-    [0.06, 0.18, 0.32, 0.26, 0.72],
-    [0.05, 0.24, 0.36, 0.30, 0.66],
-  ];
-  const cell = Math.min(76, (w - 260) / 5);
-  const x0 = w / 2 - (cell * 5) / 2;
-  const y0 = 114;
-  const row = Math.floor(t % 5);
-  words.forEach((word, i) => {
-    text(ctx, word, x0 - 18, y0 + i * cell + cell / 2, 14, C.muted, 650, "right");
-    text(ctx, word, x0 + i * cell + cell / 2, y0 - 22, 14, C.muted, 650);
-  });
-  for (let r = 0; r < 5; r++) {
-    for (let c = 0; c < 5; c++) {
-      const v = vals[r][c];
-      ctx.fillStyle = r === row ? `rgba(10,132,255,${0.18 + v * 0.52})` : `rgba(255,255,255,${0.035 + v * 0.22})`;
-      ctx.fillRect(x0 + c * cell, y0 + r * cell, cell - 5, cell - 5);
-      text(ctx, v.toFixed(2), x0 + c * cell + cell / 2, y0 + r * cell + cell / 2, 13, C.text, 650);
-    }
-  }
-  text(ctx, "第 i 行 = 第 i 个 token 看全句", w / 2, h - 58, 23, C.text, 760);
-}
-
-function drawScale(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const before = [2.1, 5.8, 7.4, 1.6, 4.2];
-  const after = before.map((v) => v / Math.sqrt(64));
-  drawBars(ctx, 120, 122, before, "未缩放：分数过尖", t);
-  drawBars(ctx, 120, 352, after, "缩放后：更稳定", t, 8);
-}
-
-function drawBars(ctx, x, y, values, label, t, scale = 1) {
-  text(ctx, label, x, y - 34, 18, C.muted, 650, "left");
-  values.forEach((v, i) => {
-    const ww = v * 46 * scale;
-    box(ctx, x, y + i * 30, 500, 18, "", { stroke: C.lineSoft, fill: "rgba(255,255,255,0.035)", radius: 6 });
-    ctx.fillStyle = i === Math.floor(t % values.length) ? C.accent : "rgba(255,255,255,0.45)";
-    ctx.fillRect(x, y + i * 30, Math.min(500, ww), 18);
-  });
-}
-
-function drawSoftmax(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const labels = ["毒", "毒蛇", "被", "毒死"];
-  const vals = [0.18, 0.44, 0.14, 0.24];
-  labels.forEach((label, i) => {
-    const x = 138 + i * 172;
-    const bh = vals[i] * 470;
-    box(ctx, x, h - 126 - bh, 88, bh, "", { stroke: C.line, fill: "rgba(255,255,255,0.035)", radius: 12 });
-    ctx.fillStyle = i === Math.floor(t % labels.length) ? C.accent : "rgba(255,255,255,0.42)";
-    ctx.fillRect(x, h - 126 - bh, 88, bh);
-    text(ctx, label, x + 44, h - 88, 18, C.text, 720);
-    text(ctx, vals[i].toFixed(2), x + 44, h - 146 - bh, 16, C.muted, 650);
-  });
-  text(ctx, "Σ weights = 1", w / 2, 54, 25, C.text, 760);
-}
-
-function drawWeighted(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const vals = [["V₁", 0.16], ["V₂", 0.42], ["V₃", 0.12], ["V₄", 0.30]];
-  vals.forEach(([label, weight], i) => {
-    const y = 100 + i * 90;
-    box(ctx, 96, y, 120, 56, label, { stroke: C.line, size: 22 });
-    text(ctx, `× ${weight.toFixed(2)}`, 282, y + 28, 22, i === Math.floor(t % vals.length) ? C.accent : C.muted, 760);
-    arrow(ctx, 350, y + 28, 530, h / 2, i === Math.floor(t % vals.length) ? C.accent : "rgba(255,255,255,0.24)");
-  });
-  box(ctx, 560, h / 2 - 58, 190, 116, "zᵢ", { stroke: C.accent, size: 38 });
-  text(ctx, "上下文后的新向量", 655, h / 2 + 78, 18, C.muted, 650);
-}
-
-function drawAttentionFormula(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const steps = [["QKᵀ", "打分"], ["/√dₖ", "缩放"], ["softmax", "权重"], ["×V", "读内容"]];
-  steps.forEach(([a, b], i) => {
-    const x = 82 + i * 198;
-    box(ctx, x, h / 2 - 54, 150, 108, "", { stroke: i === Math.floor(t % steps.length) ? C.accent : C.line });
-    text(ctx, a, x + 75, h / 2 - 12, 26, C.text, 760);
-    text(ctx, b, x + 75, h / 2 + 28, 17, C.muted, 650);
-    if (i < steps.length - 1) arrow(ctx, x + 154, h / 2, x + 192, h / 2, "rgba(10,132,255,0.8)");
-  });
-  text(ctx, "Attention(Q,K,V)", w / 2, 92, 30, C.text, 780);
-}
-
-function drawLlmWhy(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const layers = ["Layer 1", "Layer 8", "Layer 16", "Layer 32"];
-  layers.forEach((layer, i) => {
-    const y = 92 + i * 112;
-    box(ctx, 142 + i * 34, y, 530 - i * 68, 64, layer, { stroke: i === Math.floor(t % layers.length) ? C.accent : C.line, size: 20 });
-  });
-  text(ctx, "越深层，表示越抽象", w / 2, h - 78, 25, C.text, 760);
-}
-
-function drawSummary(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const labels = ["文字", "Token", "向量", "Q/K/V", "权重", "新语义"];
-  labels.forEach((label, i) => {
-    const x = 84 + i * ((w - 168) / (labels.length - 1));
-    const y = h / 2 + Math.sin(t + i) * 18;
-    box(ctx, x - 52, y - 36, 104, 72, label, { stroke: i === Math.floor(t % labels.length) ? C.accent : C.line, size: 17 });
-    if (i < labels.length - 1) arrow(ctx, x + 54, y, x + ((w - 168) / (labels.length - 1)) - 56, h / 2 + Math.sin(t + i + 1) * 18, "rgba(10,132,255,0.72)");
-  });
-  text(ctx, "Self-Attention = 可计算的上下文关系", w / 2, 94, 26, C.text, 760);
-}
-
-function drawImageIntro(ctx, w, h, t) {
-  bg(ctx, w, h);
-  box(ctx, 70, 238, 210, 96, "提示词", { stroke: C.accent, size: 26 });
-  text(ctx, "一个人拿着猫粮喂猫", 175, 298, 16, C.muted, 650);
-  arrow(ctx, 288, 286, 400, 286, "rgba(10,132,255,0.85)");
-  box(ctx, 420, 176, 180, 74, "文字向量", { stroke: C.line, size: 21 });
-  box(ctx, 420, 322, 180, 74, "视觉约束", { stroke: C.line, size: 21 });
-  arrow(ctx, 610, 214, 720, 256, "rgba(10,132,255,0.65)");
-  arrow(ctx, 610, 360, 720, 318, "rgba(10,132,255,0.65)");
-  box(ctx, 720, 222, 128, 128, "图像", { stroke: C.accent, size: 28 });
-  text(ctx, "文字不是口令，而是生成条件", w / 2, h - 70, 25, C.text, 760);
-}
-
-function drawClipSpace(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const textPts = [["猫", 0.28, 0.34], ["人", 0.40, 0.56], ["喂食", 0.58, 0.46], ["插画", 0.72, 0.32]];
-  const imgPts = [["猫图", 0.32, 0.38], ["人物图", 0.44, 0.60], ["动作图", 0.61, 0.50], ["风格图", 0.76, 0.36]];
-  ctx.strokeStyle = "rgba(255,255,255,0.16)";
-  ctx.beginPath();
-  ctx.moveTo(110, h - 110);
-  ctx.lineTo(w - 110, h - 110);
-  ctx.moveTo(110, h - 110);
-  ctx.lineTo(110, 90);
-  ctx.stroke();
-  textPts.forEach(([label, px, py], i) => {
-    const x = 110 + px * (w - 220);
-    const y = 90 + py * (h - 210);
-    const x2 = 110 + imgPts[i][1] * (w - 220);
-    const y2 = 90 + imgPts[i][2] * (h - 210);
-    ctx.strokeStyle = i === Math.floor(t % textPts.length) ? C.accent : "rgba(255,255,255,0.2)";
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-    ctx.fillStyle = C.accent;
-    ctx.beginPath();
-    ctx.arc(x, y, 7, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = C.text;
-    ctx.beginPath();
-    ctx.arc(x2, y2, 7, 0, Math.PI * 2);
-    ctx.fill();
-    text(ctx, label, x + 14, y - 12, 15, C.muted, 650, "left");
-    text(ctx, imgPts[i][0], x2 + 14, y2 + 14, 15, C.muted, 650, "left");
-  });
-  text(ctx, "文字和图片被拉到同一个语义空间", w / 2, h - 60, 24, C.text, 760);
-}
-
-function drawDiffusion(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const steps = ["噪声", "粗轮廓", "结构", "细节", "图像"];
-  steps.forEach((label, i) => {
-    const x = 88 + i * 176;
-    const active = i <= Math.floor((t * 1.2) % steps.length);
-    box(ctx, x, 210, 118, 118, "", { stroke: active ? C.accent : C.line });
-    for (let j = 0; j < 28; j++) {
-      const px = x + 18 + (j % 7) * 12;
-      const py = 230 + Math.floor(j / 7) * 18;
-      ctx.fillStyle = active && j % (i + 2) === 0 ? C.accent : "rgba(255,255,255,0.28)";
-      ctx.globalAlpha = i === 0 ? 0.9 : 0.25 + i * 0.14;
-      ctx.fillRect(px, py, 7, 7);
-      ctx.globalAlpha = 1;
-    }
-    text(ctx, label, x + 59, 360, 17, C.muted, 680);
-    if (i < steps.length - 1) arrow(ctx, x + 122, 268, x + 170, 268, "rgba(10,132,255,0.72)");
-  });
-  text(ctx, "生成 = 在提示词引导下逐步去噪", w / 2, 92, 27, C.text, 760);
-}
-
-function drawUnet(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const left = [[100, 130, 120, 70], [150, 230, 120, 70], [210, 330, 120, 70]];
-  const right = [[680, 130, 120, 70], [630, 230, 120, 70], [570, 330, 120, 70]];
-  left.forEach((b, i) => box(ctx, ...b, ["输入", "压缩", "语义"][i], { stroke: i === Math.floor(t % 3) ? C.accent : C.line, size: 19 }));
-  right.forEach((b, i) => box(ctx, ...b, ["细节", "放大", "输出"][i], { stroke: i === Math.floor(t % 3) ? C.accent : C.line, size: 19 }));
-  arrow(ctx, 220, 165, 150, 230, "rgba(10,132,255,0.65)");
-  arrow(ctx, 270, 265, 210, 330, "rgba(10,132,255,0.65)");
-  arrow(ctx, 330, 365, 570, 365, "rgba(10,132,255,0.8)");
-  arrow(ctx, 690, 365, 630, 300, "rgba(10,132,255,0.65)");
-  arrow(ctx, 750, 265, 680, 200, "rgba(10,132,255,0.65)");
-  [[220, 165, 680, 165], [270, 265, 630, 265], [330, 365, 570, 365]].forEach(([x1, y1, x2, y2]) => {
-    ctx.strokeStyle = "rgba(255,255,255,0.18)";
-    ctx.setLineDash([8, 8]);
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  });
-  text(ctx, "U-Net：压缩看整体，跳连保细节，再还原图像", w / 2, h - 70, 23, C.text, 760);
-}
-
-function drawLatent(ctx, w, h, t) {
-  bg(ctx, w, h);
-  box(ctx, 70, 235, 170, 110, "像素图", { stroke: C.line, size: 24 });
-  arrow(ctx, 250, 290, 360, 290, "rgba(10,132,255,0.8)");
-  box(ctx, 382, 210, 150, 160, "Latent", { stroke: C.accent, size: 24 });
-  for (let i = 0; i < 36; i++) {
-    const x = 404 + (i % 6) * 18;
-    const y = 250 + Math.floor(i / 6) * 16;
-    ctx.fillStyle = i % 5 === Math.floor(t % 5) ? C.accent : "rgba(255,255,255,0.28)";
-    ctx.fillRect(x, y, 9, 9);
-  }
-  arrow(ctx, 544, 290, 654, 290, "rgba(10,132,255,0.8)");
-  box(ctx, 676, 235, 170, 110, "高清图", { stroke: C.line, size: 24 });
-  text(ctx, "在压缩空间里生成，再解码回图片", w / 2, h - 72, 24, C.text, 760);
-}
-
-function drawControl(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const rows = [["提示词", "风格与内容"], ["边缘图", "构图轮廓"], ["姿态", "人物动作"], ["遮罩", "局部重绘"]];
-  rows.forEach(([a, b], i) => {
-    const y = 104 + i * 94;
-    box(ctx, 92, y, 132, 58, a, { stroke: i === Math.floor(t % rows.length) ? C.accent : C.line, size: 20 });
-    arrow(ctx, 234, y + 29, 360, y + 29, "rgba(10,132,255,0.72)");
-    box(ctx, 382, y, 300, 58, b, { stroke: C.line, size: 19 });
-  });
-  box(ctx, 714, 205, 96, 180, "生成图", { stroke: C.accent, size: 20 });
-  text(ctx, "控制条件越明确，生成越可控", w / 2, h - 64, 24, C.text, 760);
-}
-
-function drawImageWorkflow(ctx, w, h, t) {
-  bg(ctx, w, h);
-  const steps = ["Prompt", "草图", "控制", "重绘", "放大", "交付"];
-  steps.forEach((label, i) => {
-    const x = 70 + i * 138;
-    const y = h / 2 + Math.sin(t + i) * 12;
-    box(ctx, x, y - 40, 100, 80, label, { stroke: i === Math.floor(t % steps.length) ? C.accent : C.line, size: 17 });
-    if (i < steps.length - 1) arrow(ctx, x + 104, y, x + 134, h / 2 + Math.sin(t + i + 1) * 12, "rgba(10,132,255,0.75)");
-  });
-  text(ctx, "AI 绘画工作流：不是一次出图，而是连续迭代", w / 2, 96, 24, C.text, 760);
-}
-
-showSlide(0);
