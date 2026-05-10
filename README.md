@@ -10,5 +10,4 @@ Open `index.html` directly or deploy the repository as a static site on Vercel.
 
 - `index.html`, `styles.css`, `script.js`: web presentation runtime
 - `data/slides.js`: slide content data
-- `speaker_notes.md`: page-by-page speaker notes
 - `assets/`: selected video frames and GIF clips used in the deck

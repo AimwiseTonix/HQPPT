@@ -3,10 +3,6 @@ const deck = document.querySelector("#deck");
 const prevBtn = document.querySelector("#prevBtn");
 const nextBtn = document.querySelector("#nextBtn");
 const fullBtn = document.querySelector("#fullBtn");
-const notesBtn = document.querySelector("#notesBtn");
-const closeNotesBtn = document.querySelector("#closeNotesBtn");
-const notesPanel = document.querySelector("#notesPanel");
-const noteText = document.querySelector("#noteText");
 const slideNo = document.querySelector("#slideNo");
 const progressBar = document.querySelector("#progressBar");
 
@@ -43,12 +39,26 @@ function renderSlide(slide) {
 
 function renderBullets(slide) {
   if (slide.layout === "chapter") {
-    return `<ul class="bullets"><li>${escapeHtml(slide.sectionIntent)}</li><li>建议讲授时长：${escapeHtml(slide.chapterTime)}</li></ul>`;
+    return `<ul class="bullets">${chapterAgenda(slide.sectionKey).map((b) => `<li>${escapeHtml(b)}</li>`).join("")}</ul>`;
   }
   if (slide.layout === "hero" && slide.id !== 1) {
     return `<ul class="bullets">${slide.bullets.slice(0, 2).map((b) => `<li>${escapeHtml(b)}</li>`).join("")}</ul>`;
   }
   return `<ul class="bullets">${slide.bullets.map((b) => `<li>${escapeHtml(b)}</li>`).join("")}</ul>`;
+}
+
+function chapterAgenda(sectionKey) {
+  const agenda = {
+    opening: ["课程主线：从语言、图像、视频，到文旅 IP 内容生产", "学习目标：听懂原理、看清边界、判断落地价值", "结尾落点：AI 漫剧如何服务北京环球类文旅场景"],
+    basics: ["先把 AI、模型、数据、参数这些词讲成人话", "再解释训练和推理的区别", "最后建立后面三类生成模型共用的理解框架"],
+    llm: ["从中文歧义案例进入语言理解", "拆开 Token、向量、上下文关系", "用图书馆类比理解模型如何检索和组织信息"],
+    image: ["先看早期 AI 绘画为什么容易失控", "再看扩散、语义对齐、局部编辑如何解决问题", "最后落到角色、风格、分镜这些内容工作流"],
+    video: ["视频比图片多了时间，所以难点会成倍增加", "重点理解跨帧一致、镜头控制、物理感和长视频", "把技术能力对应到可导演、可剪辑、可复用"],
+    comic: ["从剧本、角色、分镜开始搭建生产线", "把 LLM、AI 绘画、AI 视频放进不同环节", "判断 AI 漫剧真正节省的是哪一类成本"],
+    universal: ["先看短剧内容消费和文旅 IP 的结合机会", "再看北京环球这类场景适合做哪些内容", "最后用合规、成本、运营节奏判断可行性"],
+    closing: ["回收三条主线：语言理解、视觉生成、视频一致性", "形成一个判断框架：能力、边界、场景、合规", "把课程知识落到真实项目判断"],
+  };
+  return agenda[sectionKey] || ["本章先建立核心问题", "再拆解关键原理", "最后连接到真实应用场景"];
 }
 
 function renderVisual(slide) {
@@ -68,9 +78,9 @@ function renderVisual(slide) {
     return `
       <div class="visual">
         <div class="stat-row">
-          <div class="stat-card"><strong>¥1000亿+</strong><span>参考 PPT：2025 年微短剧市场规模</span></div>
-          <div class="stat-card"><strong>6.9亿</strong><span>参考 PPT：短剧用户规模</span></div>
-          <div class="stat-card"><strong>120.5分钟</strong><span>参考 PPT：人均单日使用时长</span></div>
+          <div class="stat-card"><strong>¥1000亿+</strong><span>2025 年微短剧市场规模</span></div>
+          <div class="stat-card"><strong>6.9亿</strong><span>短剧用户规模</span></div>
+          <div class="stat-card"><strong>120.5分钟</strong><span>人均单日使用时长</span></div>
         </div>
         <div class="caption">${escapeHtml(visual.caption || "")}</div>
       </div>
@@ -210,20 +220,6 @@ function arrowRow(items) {
   `;
 }
 
-function noteFor(slide) {
-  const first = {
-    opening: "先建立方向感：这门课不是工具演示，而是解释 AIGC 为什么能从文字走到图像、视频和内容生产。",
-    basics: "这一页用大白话讲。先举生活例子，再落到 AI 概念，避免像教材定义。",
-    llm: "这一页只讲直觉，不讲公式。重点是让听众理解上下文关系。",
-    image: "这一页围绕图像生成的具体难题展开：语义、布局、文字、局部修改或工作流。",
-    video: "这一页强调视频多了时间维度，所以要处理一致性、运动、物理和镜头。",
-    comic: "这一页把模型能力落到内容生产流程，不把 AI 漫剧讲成一键生成。",
-    universal: "这一页结合参考 PPT，用市场、IP、场景、合规、运营判断可行性。",
-    closing: "这一页负责收束，把复杂内容压回听众能带走的判断框架。",
-  }[slide.sectionKey] || "这一页讲清楚一个观点即可。";
-  return `${first}\n\n页面核心：${slide.core}\n\n讲法：先解释标题，再给一个具体例子，最后用一句话过渡到下一页。`;
-}
-
 function showSlide(index) {
   const next = Math.max(0, Math.min(slides.length - 1, index));
   state.index = next;
@@ -236,13 +232,6 @@ function showSlide(index) {
   requestAnimationFrame(() => active.classList.add("enter"));
   slideNo.textContent = `${next + 1} / ${slides.length}`;
   progressBar.style.width = `${((next + 1) / slides.length) * 100}%`;
-  noteText.textContent = noteFor(slides[next]);
-}
-
-function toggleNotes(force) {
-  const open = typeof force === "boolean" ? force : !notesPanel.classList.contains("open");
-  notesPanel.classList.toggle("open", open);
-  notesPanel.setAttribute("aria-hidden", String(!open));
 }
 
 renderDeck();
@@ -250,8 +239,6 @@ showSlide(0);
 
 prevBtn.addEventListener("click", () => showSlide(state.index - 1));
 nextBtn.addEventListener("click", () => showSlide(state.index + 1));
-notesBtn.addEventListener("click", () => toggleNotes());
-closeNotesBtn.addEventListener("click", () => toggleNotes(false));
 fullBtn.addEventListener("click", () => {
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen();
@@ -260,6 +247,5 @@ fullBtn.addEventListener("click", () => {
 document.addEventListener("keydown", (event) => {
   if (event.key === "ArrowRight" || event.key === " ") showSlide(state.index + 1);
   if (event.key === "ArrowLeft") showSlide(state.index - 1);
-  if (event.key.toLowerCase() === "n") toggleNotes();
   if (event.key.toLowerCase() === "f") fullBtn.click();
 });
