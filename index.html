@@ -3,226 +3,507 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Transformer 原理动画 PPT</title>
+    <title>Transformer 原理长版 PPT</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="deck" aria-live="polite">
-      <section class="slide cover active" data-scene="cover">
-        <div class="hero-grid" aria-hidden="true"></div>
-        <div class="hero-orbit" aria-hidden="true">
-          <span></span><span></span><span></span><span></span>
-        </div>
-        <div class="cover-copy">
-          <p class="eyebrow">HTML PPT / 原理动画 / 数学模型</p>
-          <h1>彻底理解 Transformer</h1>
-          <p class="subtitle">把视频里的讲解重构成一套黑色科技风演示：先讲人话，再落公式，再看动画。</p>
-          <div class="tags">
-            <span>Self-Attention</span>
-            <span>Q / K / V</span>
-            <span>Softmax</span>
-            <span>Encoder / Decoder</span>
-          </div>
-        </div>
-        <div class="cover-visual">
-          <canvas id="coverCanvas" width="900" height="620"></canvas>
+      <section class="slide cover active" data-scene="cover" data-chapter="总览">
+        <div class="chapter">Transformer / Long Form</div>
+        <h1>从一句绕口中文<br />彻底理解 Transformer</h1>
+        <p class="lead">全黑极简版：把视频内容拆成 6 个大章节、51 页细讲。每一步先讲人话，再落到数学结构。</p>
+        <div class="hero-card">
+          <span>用毒毒毒蛇，毒蛇会不会被毒毒死？</span>
         </div>
       </section>
 
-      <section class="slide split" data-scene="hook">
+      <section class="slide chapter-slide" data-scene="chapter" data-chapter="第一章">
+        <div class="chapter">Chapter 1</div>
+        <h2>为什么这句话难？</h2>
+        <p class="lead">同一个“毒”在不同位置会扮演不同角色。Transformer 的第一性问题就是：如何让机器找出字词之间的关系。</p>
+      </section>
+
+      <section class="slide split" data-scene="hook" data-chapter="第一章">
         <div class="copy">
-          <p class="eyebrow">01 / 先从一句话开始</p>
-          <h2>模型不是“读单词”，而是在找词之间的关系</h2>
-          <p class="plain">例句：<strong>用毒毒毒蛇，毒蛇会不会被毒毒死？</strong></p>
-          <p>人能靠上下文判断：有的“毒”像动作，有的“毒”像属性，有的又参与“毒死”这个结果；同一个字在不同位置含义不同。</p>
-          <div class="analogy">通俗理解：每个词都像会议成员，先听所有人的发言，再决定谁的信息对自己最重要。</div>
-          <div class="mathline">目标：把“词之间的相关性”变成可计算的矩阵。</div>
+          <div class="chapter">01 / 例句</div>
+          <h2>用毒毒毒蛇，毒蛇会不会被毒毒死？</h2>
+          <p>人能根据上下文猜出：有的“毒”像动作，有的“毒”像属性，有的“毒”又参与“毒死”这个结果。</p>
+          <p>但计算机一开始只看到符号序列。它不知道哪个“毒”和哪个“毒蛇”相关，也不知道“毒死”应该被看作一个结果。</p>
         </div>
-        <div class="viz-panel relation-viz" id="relationViz">
-          <div class="sentence-line">
-            <span>用</span><span>毒</span><span>毒</span><span>毒蛇</span><span>，</span><span>毒蛇</span><span>会不会</span><span>被</span><span>毒</span><span>毒死</span><span>？</span>
-          </div>
-          <svg viewBox="0 0 980 420" aria-hidden="true">
-            <path class="arc a1" d="M295 205 C360 60 470 60 535 205" />
-            <path class="arc a2" d="M525 215 C610 80 750 80 825 215" />
-            <path class="arc a3" d="M535 230 C610 320 730 320 825 230" />
-            <circle class="pulse-dot" cx="535" cy="215" r="8" />
-          </svg>
-          <div class="caption">关系链：毒(动作/属性) → 毒蛇 → 被毒 → 毒死</div>
+        <div class="viz simple-sentence">
+          <div>用</div><div>毒</div><div>毒</div><div>毒蛇</div><div>毒蛇</div><div>被</div><div>毒</div><div>毒死</div>
         </div>
       </section>
 
-      <section class="slide split" data-scene="tokens">
+      <section class="slide split" data-scene="roles" data-chapter="第一章">
         <div class="copy">
-          <p class="eyebrow">02 / Tokenization</p>
-          <h2>第一步：把文本切成 token</h2>
-          <p>Transformer 不直接吃自然语言。视频里用 BPE 这类分词工具举例：先把句子拆成 token，再映射成整数 id。</p>
-          <div class="analogy">通俗理解：像把一本书拆成可扫描的条形码，每个条形码对应词表里的一个编号。</div>
-          <div class="mathline">token<sub>i</sub> → id<sub>i</sub>, ids ∈ ℕ<sup>n</sup></div>
+          <div class="chapter">02 / 同字不同义</div>
+          <h2>难点不是“毒”字，而是“毒”在句子里的位置</h2>
+          <p>单独拿出一个“毒”，机器无法判断它是名词、动词、形容词，还是词组的一部分。</p>
+          <p>所以理解语言不能只看一个 token 本身，必须看它和周围 token 的关系。</p>
         </div>
-        <div class="viz-panel token-lab" id="tokenLab">
+        <div class="viz role-grid">
+          <div><b>毒</b><span>动作：用毒</span></div>
+          <div><b>毒</b><span>属性：有毒</span></div>
+          <div><b>毒蛇</b><span>实体：一种蛇</span></div>
+          <div><b>毒死</b><span>结果：被毒死</span></div>
+        </div>
+      </section>
+
+      <section class="slide split" data-scene="relation" data-chapter="第一章">
+        <div class="copy">
+          <div class="chapter">03 / 关系才是语义</div>
+          <h2>每个字都和其他字相互关联</h2>
+          <p>“用”会更关心后面的“毒”；“毒蛇”会关心前面的修饰和后面的动作；“毒死”会关心“被”和施加动作的“毒”。</p>
+          <p>Transformer 的核心思想，就是把这种关联变成一个可训练、可计算的权重矩阵。</p>
+        </div>
+        <div class="viz canvas-box"><canvas id="relationCanvas" width="900" height="560"></canvas></div>
+      </section>
+
+      <section class="slide split" data-scene="goal" data-chapter="第一章">
+        <div class="copy">
+          <div class="chapter">04 / 本质目标</div>
+          <h2>从“文字”到“关系矩阵”</h2>
+          <p>机器无法直接理解中文，但可以处理数字、向量、矩阵和概率。</p>
+          <p>所以整条路线是：文字先变成向量，再让向量之间互相打分，最后用分数决定谁影响谁。</p>
+        </div>
+        <div class="formula big">文字 → token → 向量 X → 关系权重 A → 新向量 Z</div>
+      </section>
+
+      <section class="slide chapter-slide" data-scene="chapter" data-chapter="第二章">
+        <div class="chapter">Chapter 2</div>
+        <h2>输入预处理：把文字变成模型能算的东西</h2>
+        <p class="lead">视频前半段很关键：Transformer 不是直接理解文字，而是先完成 token、embedding、position 三步。</p>
+      </section>
+
+      <section class="slide split" data-scene="tokens" data-chapter="第二章">
+        <div class="copy">
+          <div class="chapter">05 / Token</div>
+          <h2>第一步：分词，把句子拆成 token</h2>
+          <p>视频里提到 BPE 这类分词工具。它会把句子拆成最小语义单位，不一定等于一个汉字，也不一定等于一个完整词。</p>
+          <p>比如“毒蛇”“毒死”可能作为更稳定的片段出现，而不是永远拆成单字。</p>
+        </div>
+        <div class="viz token-lab" id="tokenLab">
           <div class="input-strip">用毒毒毒蛇，毒蛇会不会被毒毒死？</div>
           <div class="token-stream"></div>
-          <div class="id-stream"></div>
         </div>
       </section>
 
-      <section class="slide split" data-scene="embedding">
+      <section class="slide split" data-scene="ids" data-chapter="第二章">
         <div class="copy">
-          <p class="eyebrow">03 / Embedding</p>
-          <h2>第二步：编号变成向量，语义进入坐标系</h2>
-          <p>Embedding 表是一张可学习的查找表。每个 token id 会取出一个 d<sub>model</sub> 维向量；经典 Transformer 里常用 512 维。</p>
-          <div class="analogy">通俗理解：不是给词贴中文解释，而是给词一个“语义坐标”。意思相近的词，坐标更接近。</div>
-          <div class="mathline">X = Embedding(ids) + PE, X ∈ ℝ<sup>n×d_model</sup></div>
+          <div class="chapter">06 / Token ID</div>
+          <h2>第二步：每个 token 映射成词表编号</h2>
+          <p>模型真正接收的不是“毒蛇”两个字，而是词表中的一个整数编号。</p>
+          <p>这一步像把文字贴上条形码：条形码本身没有语义，但它能索引到下一步的向量。</p>
         </div>
-        <div class="viz-panel embedding-viz">
-          <canvas id="embeddingCanvas" width="940" height="560"></canvas>
-        </div>
+        <div class="viz id-lab" id="idLab"></div>
       </section>
 
-      <section class="slide split" data-scene="qkv">
+      <section class="slide split" data-scene="embedding" data-chapter="第二章">
         <div class="copy">
-          <p class="eyebrow">04 / Q K V</p>
-          <h2>同一个词，会被投影成三种身份</h2>
-          <p><strong>Q</strong> 是“我想找什么”，<strong>K</strong> 是“我有什么标签可被匹配”，<strong>V</strong> 是“我能贡献什么内容”。</p>
-          <div class="analogy">通俗理解：去图书馆找资料。Query 是你的问题，Key 是书脊标签，Value 是书里真正的内容。</div>
-          <div class="mathline">Q=XW<sub>Q</sub>, K=XW<sub>K</sub>, V=XW<sub>V</sub></div>
+          <div class="chapter">07 / Embedding</div>
+          <h2>第三步：编号变成 512 维词向量</h2>
+          <p>视频里说，一个 token 可以被编码成 512 维向量。你可以把它理解成 512 个数字组成的语义坐标。</p>
+          <p>它不是人工写死的解释，而是在训练过程中不断调整出来的。</p>
         </div>
-        <div class="viz-panel qkv-viz">
-          <canvas id="qkvCanvas" width="940" height="560"></canvas>
-        </div>
+        <div class="viz canvas-box"><canvas id="embeddingCanvas" width="900" height="560"></canvas></div>
       </section>
 
-      <section class="slide wide" data-scene="attention">
-        <div class="top-copy">
-          <p class="eyebrow">05 / Scaled Dot-Product Attention</p>
-          <h2>注意力的核心：先打分，再归一化，再加权求和</h2>
-        </div>
-        <div class="formula-band">
-          Attention(Q,K,V) = softmax( QK<sup>T</sup> / √d<sub>k</sub> ) V
-        </div>
-        <div class="viz-panel matrix-stage">
-          <canvas id="attentionCanvas" width="1320" height="520"></canvas>
-        </div>
-        <div class="explain-row">
-          <span><b>QK<sup>T</sup></b>：每个词和所有词做相似度打分</span>
-          <span><b>√d<sub>k</sub></b>：缩放，防止维度大时分数爆炸</span>
-          <span><b>softmax</b>：把分数变成比例</span>
-          <span><b>×V</b>：按比例吸收信息</span>
-        </div>
-      </section>
-
-      <section class="slide split" data-scene="softmax">
+      <section class="slide split" data-scene="vectorMeaning" data-chapter="第二章">
         <div class="copy">
-          <p class="eyebrow">06 / Softmax</p>
-          <h2>Softmax 把“谁更重要”变成百分比</h2>
-          <p>注意力分数本身不是概率。Softmax 会放大高分、压低低分，并保证所有权重加起来等于 1。</p>
-          <div class="analogy">通俗理解：把每个词的“支持票”换算成预算比例，预算越多，最后汇总时权重越大。</div>
-          <div class="mathline">softmax(z<sub>i</sub>) = e<sup>z_i</sup> / Σ<sub>j</sub>e<sup>z_j</sup></div>
+          <div class="chapter">08 / 向量意义</div>
+          <h2>向量不是翻译，而是“可计算的语义位置”</h2>
+          <p>相近含义的 token，向量可能更接近；不同语法角色的 token，向量会在不同维度上呈现差异。</p>
+          <p>模型不会说“这一维表示毒性”，但训练会让这些维度整体服务于预测任务。</p>
         </div>
-        <div class="viz-panel softmax-viz">
-          <canvas id="softmaxCanvas" width="940" height="560"></canvas>
-        </div>
+        <div class="formula">x<sub>i</sub> ∈ ℝ<sup>512</sup><br />X ∈ ℝ<sup>n×512</sup></div>
       </section>
 
-      <section class="slide split" data-scene="heads">
+      <section class="slide split" data-scene="position" data-chapter="第二章">
         <div class="copy">
-          <p class="eyebrow">07 / Multi-Head Attention</p>
-          <h2>多头不是重复计算，而是多个观察角度</h2>
-          <p>单个注意力头只能学一种关系模式。视频里讲到：512 维可以拆成 8 个 64 维的头，让不同头独立理解不同关系。</p>
-          <div class="analogy">通俗理解：不是一个专家拍板，而是多个专家从不同角度打分，最后把意见合并。</div>
-          <div class="mathline">head<sub>i</sub>∈ℝ<sup>n×64</sup>；MHA(X)=Concat(head<sub>1</sub>,...,head<sub>8</sub>)W<sup>O</sup></div>
+          <div class="chapter">09 / Position</div>
+          <h2>第四步：加入位置编码</h2>
+          <p>Transformer 会把多个向量同时送入模型，这带来并行优势，但也让模型天然不知道先后顺序。</p>
+          <p>因此要给每个 token 加上位置编码，告诉模型谁在前、谁在后。</p>
         </div>
-        <div class="viz-panel heads-viz">
-          <canvas id="headsCanvas" width="940" height="560"></canvas>
-        </div>
+        <div class="viz canvas-box"><canvas id="positionCanvas" width="900" height="560"></canvas></div>
       </section>
 
-      <section class="slide split" data-scene="position">
+      <section class="slide split" data-scene="positionFormula" data-chapter="第二章">
         <div class="copy">
-          <p class="eyebrow">08 / Positional Encoding</p>
-          <h2>Attention 不自带顺序感，必须注入位置信息</h2>
-          <p>只看 token 集合，模型无法区分“蛇咬男孩”和“男孩咬蛇”。位置编码让每个词带上序号特征。</p>
-          <div class="analogy">通俗理解：同样的演员，站位不同，剧情就不同。位置编码就是舞台坐标。</div>
-          <div class="mathline">PE(pos,2i)=sin(pos/10000<sup>2i/d</sup>)；PE(pos,2i+1)=cos(...)</div>
+          <div class="chapter">10 / 位置公式</div>
+          <h2>位置编码可以用 sin / cos 表达</h2>
+          <p>经典 Transformer 使用不同频率的正弦、余弦曲线，让每个位置都有独特“指纹”。</p>
+          <p>直觉上，它像给每个 token 发一个座位号。</p>
         </div>
-        <div class="viz-panel position-viz">
-          <canvas id="positionCanvas" width="940" height="560"></canvas>
-        </div>
+        <div class="formula">PE(pos,2i)=sin(pos/10000<sup>2i/d</sup>)<br />PE(pos,2i+1)=cos(pos/10000<sup>2i/d</sup>)</div>
       </section>
 
-      <section class="slide split" data-scene="encoder">
+      <section class="slide chapter-slide" data-scene="chapter" data-chapter="第三章">
+        <div class="chapter">Chapter 3</div>
+        <h2>Q / K / V：让每个 token 会提问、会被检索、会贡献内容</h2>
+        <p class="lead">这是视频前半部分最关键的桥。后面的注意力公式，全部建立在 Q、K、V 三种身份上。</p>
+      </section>
+
+      <section class="slide split" data-scene="qkvIntro" data-chapter="第三章">
         <div class="copy">
-          <p class="eyebrow">09 / Encoder Block</p>
-          <h2>Encoder 层：注意力只是上半场</h2>
-          <p>每层通常包含 Multi-Head Attention、残差连接、LayerNorm、FFN。注意力负责汇总上下文，FFN 用激活函数做非线性加工。</p>
-          <div class="analogy">通俗理解：先开会交换信息，再由每个人独立整理笔记；残差像保留原稿，LayerNorm 像统一数值尺度，让深层训练更稳定。</div>
-          <div class="mathline">Y = LN( X + MHA(X) ); Z = LN( Y + FFN(Y) )</div>
+          <div class="chapter">11 / 三种身份</div>
+          <h2>同一个 token，会被投影成 Q、K、V</h2>
+          <p>输入向量 X 会分别乘三个权重矩阵 W<sub>Q</sub>、W<sub>K</sub>、W<sub>V</sub>。</p>
+          <p>于是每个 token 都得到三份不同用途的向量：查询、键、值。</p>
         </div>
-        <div class="viz-panel block-viz">
-          <canvas id="encoderCanvas" width="940" height="560"></canvas>
-        </div>
+        <div class="viz canvas-box"><canvas id="qkvCanvas" width="900" height="560"></canvas></div>
       </section>
 
-      <section class="slide split" data-scene="decoder">
+      <section class="slide split" data-scene="query" data-chapter="第三章">
         <div class="copy">
-          <p class="eyebrow">10 / Decoder + Mask</p>
-          <h2>Decoder 每次只预测下一个 token，不能偷看未来</h2>
-          <p>生成时，模型只能看到已经写出的前文。所以训练 Decoder 时要用 mask，把未来位置设成不可见，保证训练和使用一致。</p>
-          <div class="analogy">通俗理解：写作文不能先看到标准答案后半句，只能根据已写内容继续往下写。</div>
-          <div class="mathline">P(y<sub>t</sub>|y<sub>&lt;t</sub>,X)=softmax(W<sub>o</sub>h<sub>t</sub>)</div>
+          <div class="chapter">12 / Query</div>
+          <h2>Q：我现在想找什么信息？</h2>
+          <p>Query 表示当前 token 的“问题”。比如“用”这个 token 可能想知道后面用的是什么，“被”可能想知道谁对谁做了什么。</p>
+          <p>通俗说，Q 是检索请求。</p>
         </div>
-        <div class="viz-panel decoder-viz">
-          <canvas id="decoderCanvas" width="940" height="560"></canvas>
-        </div>
+        <div class="formula">Q = XW<sub>Q</sub></div>
       </section>
 
-      <section class="slide split" data-scene="cross">
+      <section class="slide split" data-scene="key" data-chapter="第三章">
         <div class="copy">
-          <p class="eyebrow">11 / Cross-Attention</p>
-          <h2>Decoder 还要回头查 Encoder 理解到的输入语义</h2>
-          <p>Masked self-attention 只看已生成序列；Cross-Attention 则用 Decoder 当前状态去查询 Encoder 输出 X<sub>out</sub>。</p>
-          <div class="analogy">通俗理解：生成回答或翻译时，一边看已经写出的内容，一边回头查原句哪部分最相关。</div>
-          <div class="mathline">Q = A<sub>mask</sub>W<sub>Q</sub>；K,V = X<sub>out</sub>W<sub>K,V</sub></div>
+          <div class="chapter">13 / Key</div>
+          <h2>K：我能被什么问题匹配？</h2>
+          <p>Key 像标签或索引，告诉其他 token：“如果你在找这类信息，可以来匹配我。”</p>
+          <p>视频里的说法很贴切：K 可以看作书的标签或索引。</p>
         </div>
-        <div class="viz-panel cross-viz">
-          <canvas id="crossCanvas" width="940" height="560"></canvas>
-        </div>
+        <div class="formula">K = XW<sub>K</sub></div>
       </section>
 
-      <section class="slide split" data-scene="output">
+      <section class="slide split" data-scene="value" data-chapter="第三章">
         <div class="copy">
-          <p class="eyebrow">12 / Output Probability</p>
-          <h2>最后不是直接吐字，而是在词表上给概率</h2>
-          <p>Decoder 的隐藏状态会映射到整个词表，softmax 后得到每个候选 token 的概率。argmax、采样、温度都会影响最终输出。</p>
-          <div class="analogy">通俗理解：模型每一步都在做选择题，只是选项可能有几十万个。</div>
-          <div class="mathline">ŷ<sub>t</sub> = argmax<sub>v∈Vocab</sub> P(v | context)</div>
+          <div class="chapter">14 / Value</div>
+          <h2>V：我真正贡献的内容</h2>
+          <p>Value 才是最后要被读取、加权、汇总的信息本身。</p>
+          <p>Q 和 K 负责决定“读谁”，V 负责提供“读到什么”。</p>
         </div>
-        <div class="viz-panel output-viz">
-          <canvas id="outputCanvas" width="940" height="560"></canvas>
+        <div class="formula">V = XW<sub>V</sub></div>
+      </section>
+
+      <section class="slide split" data-scene="library1" data-chapter="第三章">
+        <div class="copy">
+          <div class="chapter">15 / 图书馆类比 1</div>
+          <h2>把你想象成一个 token，带着问题走进图书馆</h2>
+          <p>你手上的问题就是 Q。你不是随机读书，而是先看每本书的索引标签。</p>
+          <p>这些索引标签就是 K。它们帮助你判断哪本书更可能回答你的问题。</p>
+        </div>
+        <div class="viz canvas-box"><canvas id="libraryCanvas" width="900" height="560"></canvas></div>
+      </section>
+
+      <section class="slide split" data-scene="library2" data-chapter="第三章">
+        <div class="copy">
+          <div class="chapter">16 / 图书馆类比 2</div>
+          <h2>匹配度越高，你花的阅读时间越多</h2>
+          <p>Q 和 K 的相似度，就是你和这本书标签的匹配度。</p>
+          <p>匹配度高的书，你会多读；匹配度低的书，你会少读甚至不读。</p>
+        </div>
+        <div class="formula">score(q,k<sub>j</sub>) = q · k<sub>j</sub></div>
+      </section>
+
+      <section class="slide split" data-scene="library3" data-chapter="第三章">
+        <div class="copy">
+          <div class="chapter">17 / 图书馆类比 3</div>
+          <h2>最后你带走的不是一本书，而是整合后的理解</h2>
+          <p>你按不同权重阅读不同书的内容 V，最后脑子里形成新的知识。</p>
+          <p>这就对应注意力输出：按权重加权汇总所有 V，得到新的 token 表示。</p>
+        </div>
+        <div class="formula">z = Σ<sub>j</sub> attention<sub>j</sub> · v<sub>j</sub></div>
+      </section>
+
+      <section class="slide chapter-slide" data-scene="chapter" data-chapter="第四章">
+        <div class="chapter">Chapter 4</div>
+        <h2>Self-Attention：自己和自己产生注意力</h2>
+        <p class="lead">现在进入核心公式。每个 token 都拿自己的 Q，去和全句所有 token 的 K 做匹配，再按权重读取 V。</p>
+      </section>
+
+      <section class="slide split" data-scene="score" data-chapter="第四章">
+        <div class="copy">
+          <div class="chapter">18 / 相似度打分</div>
+          <h2>第一步：Q 和 K 做点积</h2>
+          <p>点积越大，说明当前 Query 和某个 Key 越匹配。</p>
+          <p>在例句中，“用”可能更关注后面的“毒”；“被”会关注动作和结果。</p>
+        </div>
+        <div class="viz canvas-box"><canvas id="scoreCanvas" width="900" height="560"></canvas></div>
+      </section>
+
+      <section class="slide split" data-scene="scale" data-chapter="第四章">
+        <div class="copy">
+          <div class="chapter">19 / 缩放</div>
+          <h2>第二步：除以 √d<sub>k</sub>，防止分数过大</h2>
+          <p>维度越高，点积值越容易变大。分数太大时，softmax 会过于尖锐，训练不稳定。</p>
+          <p>所以公式里要除以 √d<sub>k</sub>。</p>
+        </div>
+        <div class="formula">scores = QK<sup>T</sup> / √d<sub>k</sub></div>
+      </section>
+
+      <section class="slide split" data-scene="softmax" data-chapter="第四章">
+        <div class="copy">
+          <div class="chapter">20 / Softmax</div>
+          <h2>第三步：把分数变成权重</h2>
+          <p>softmax 会把一行分数变成 0 到 1 之间的比例，并且总和为 1。</p>
+          <p>这行比例就表示当前 token 对其他 token 的关注程度。</p>
+        </div>
+        <div class="viz canvas-box"><canvas id="softmaxCanvas" width="900" height="560"></canvas></div>
+      </section>
+
+      <section class="slide split" data-scene="weightedSum" data-chapter="第四章">
+        <div class="copy">
+          <div class="chapter">21 / 加权汇总</div>
+          <h2>第四步：用权重读取 V</h2>
+          <p>现在模型知道该关注谁了，但还需要把那些 token 的内容真正吸收进来。</p>
+          <p>所以每个 V 会乘以注意力权重，再整体求和。</p>
+        </div>
+        <div class="formula">Attention(Q,K,V)=softmax(QK<sup>T</sup>/√d<sub>k</sub>)V</div>
+      </section>
+
+      <section class="slide split" data-scene="matrix" data-chapter="第四章">
+        <div class="copy">
+          <div class="chapter">22 / 矩阵视角</div>
+          <h2>一行权重，就是一个 token 的关注分布</h2>
+          <p>注意力矩阵的第 i 行，表示第 i 个 token 对所有 token 的关注比例。</p>
+          <p>整张矩阵则表示全句所有 token 之间的关系网络。</p>
+        </div>
+        <div class="viz canvas-box"><canvas id="matrixCanvas" width="900" height="560"></canvas></div>
+      </section>
+
+      <section class="slide split" data-scene="selfAttentionMeaning" data-chapter="第四章">
+        <div class="copy">
+          <div class="chapter">23 / Self-Attention 的意义</div>
+          <h2>每个 token 都获得了“上下文后的新理解”</h2>
+          <p>经过自注意力后，“毒”不再只是一个孤立符号，而是带着它在这句话里和其他 token 的关系。</p>
+          <p>视频里把这组新向量叫作对其他 token 的抽象理解。</p>
+        </div>
+        <div class="formula">X → Attention → Z<br />Z 包含上下文关系</div>
+      </section>
+
+      <section class="slide split" data-scene="multiHeadWhy" data-chapter="第四章">
+        <div class="copy">
+          <div class="chapter">24 / 为什么要多头？</div>
+          <h2>一个头只能学一种视角</h2>
+          <p>句子里的关系不是单一的：有动作关系、修饰关系、指代关系、情绪关系、远距离依赖。</p>
+          <p>一个注意力头可能不够，所以 Transformer 并行使用多个头。</p>
+        </div>
+        <div class="viz canvas-box"><canvas id="headsCanvas" width="900" height="560"></canvas></div>
+      </section>
+
+      <section class="slide split" data-scene="multiHeadMath" data-chapter="第四章">
+        <div class="copy">
+          <div class="chapter">25 / 多头数学</div>
+          <h2>512 维拆成 8 个 64 维头</h2>
+          <p>视频中举例：512 维向量可以拆成 8 个 64 维向量，每个头独立做一次注意力计算。</p>
+          <p>最后再把 8 个头的结果拼接回来，重新得到 512 维表示。</p>
+        </div>
+        <div class="formula compact">
+          <span>head<sub>i</sub> = Attention(Q<sub>i</sub>, K<sub>i</sub>, V<sub>i</sub>)</span>
+          <span>Q<sub>i</sub>=XW<sub>i</sub><sup>Q</sup>　K<sub>i</sub>=XW<sub>i</sub><sup>K</sup>　V<sub>i</sub>=XW<sub>i</sub><sup>V</sup></span>
+          <span>MHA = Concat(head<sub>1</sub> ... head<sub>8</sub>)W<sup>O</sup></span>
         </div>
       </section>
 
-      <section class="slide summary" data-scene="summary">
-        <p class="eyebrow">13 / 最终复盘</p>
-        <h2>Transformer 的完整链路</h2>
-        <div class="final-flow">
-          <div>Text</div><span></span><div>Token</div><span></span><div>Embedding + Position</div><span></span><div>Q/K/V</div><span></span><div>Attention</div><span></span><div>Encoder / Decoder</div><span></span><div>Next Token</div>
+      <section class="slide chapter-slide" data-scene="chapter" data-chapter="第五章">
+        <div class="chapter">Chapter 5</div>
+        <h2>Encoder：让理解变深</h2>
+        <p class="lead">多头注意力之后，还要加残差、归一化和前馈网络。它们解决的是深层网络稳定性和非线性表达能力。</p>
+      </section>
+
+      <section class="slide split" data-scene="encoderBlock" data-chapter="第五章">
+        <div class="copy">
+          <div class="chapter">26 / Encoder Block</div>
+          <h2>一个 Encoder 层通常包含四步</h2>
+          <p>Multi-Head Attention、残差连接、LayerNorm、Feed Forward Network。</p>
+          <p>这一层的目标，是让每个 token 表示变得更懂上下文。</p>
         </div>
-        <div class="summary-grid">
-          <article><b>通俗一句话</b><p>每个词先带着位置坐标进入会议室，再通过 Q/K/V 判断该听谁说话，最后汇总信息生成下一个词。</p></article>
-          <article><b>硬核一句话</b><p>X 经线性投影得到 Q,K,V，核心计算是 softmax(QK<sup>T</sup>/√d<sub>k</sub>)V，多头并行后接 FFN 和残差归一化。</p></article>
-          <article><b>为什么强</b><p>它能并行建模所有 token 之间的关系，尤其擅长长距离依赖，这也是大语言模型的基础结构。</p></article>
+        <div class="viz canvas-box"><canvas id="encoderCanvas" width="900" height="560"></canvas></div>
+      </section>
+
+      <section class="slide split" data-scene="residual" data-chapter="第五章">
+        <div class="copy">
+          <div class="chapter">27 / 残差连接</div>
+          <h2>F(X)+X：给信息一条直通路</h2>
+          <p>视频里解释得很直观：如果某层最优解是什么都不做，F(X) 可能接近 0。</p>
+          <p>但只要输出是 F(X)+X，原始 X 就还能继续往后传，深层网络更容易训练。</p>
         </div>
+        <div class="formula">Y = X + F(X)</div>
+      </section>
+
+      <section class="slide split" data-scene="layerNorm" data-chapter="第五章">
+        <div class="copy">
+          <div class="chapter">28 / LayerNorm</div>
+          <h2>归一化：让数值尺度更稳定</h2>
+          <p>每层输出的数值可能波动很大。归一化会把数值拉回稳定范围，减少训练不稳定。</p>
+          <p>严格说 LayerNorm 不只是简单压到 0 到 1，但它的直觉就是统一尺度。</p>
+        </div>
+        <div class="formula">LN(x) = γ · (x-μ)/√(σ²+ε) + β</div>
+      </section>
+
+      <section class="slide split" data-scene="ffn" data-chapter="第五章">
+        <div class="copy">
+          <div class="chapter">29 / FFN</div>
+          <h2>前馈网络：给每个位置做非线性加工</h2>
+          <p>注意力负责交换信息，FFN 负责让每个 token 的表示变得更复杂。</p>
+          <p>视频里用曲线类比：没有非线性，模型只能表达比较简单的线性关系；激活函数让它能拟合复杂形状。</p>
+        </div>
+        <div class="formula">FFN(x)=W<sub>2</sub> · ReLU(W<sub>1</sub>x+b<sub>1</sub>) + b<sub>2</sub></div>
+      </section>
+
+      <section class="slide split" data-scene="encoderStack" data-chapter="第五章">
+        <div class="copy">
+          <div class="chapter">30 / 多层堆叠</div>
+          <h2>一层理解局部，多层理解更深语义</h2>
+          <p>单层多头注意力处理一句话勉强够用，但长段落、复杂语义需要多层结构。</p>
+          <p>多层 Encoder 会逐步把浅层词义加工成更抽象的语义表示 X<sub>out</sub>。</p>
+        </div>
+        <div class="formula">X → Encoder<sub>1</sub> → ... → Encoder<sub>N</sub> → X<sub>out</sub></div>
+      </section>
+
+      <section class="slide chapter-slide" data-scene="chapter" data-chapter="第六章">
+        <div class="chapter">Chapter 6</div>
+        <h2>Decoder：根据理解逐词生成</h2>
+        <p class="lead">视频后半段讲生成。Decoder 的核心是：瞻前顾后。看 Encoder 理解到的输入，也看自己已经生成的输出。</p>
+      </section>
+
+      <section class="slide split" data-scene="decoderInputs" data-chapter="第六章">
+        <div class="copy">
+          <div class="chapter">31 / 两个输入</div>
+          <h2>Decoder 同时接收两类信息</h2>
+          <p>第一类是 Encoder 输出 X<sub>out</sub>，它代表模型对原句的理解。</p>
+          <p>第二类是已经生成的 token 序列，它代表当前写到哪里了。</p>
+        </div>
+        <div class="formula">Decoder input = X<sub>out</sub> + y<sub>&lt;t</sub></div>
+      </section>
+
+      <section class="slide split" data-scene="autoregressive" data-chapter="第六章">
+        <div class="copy">
+          <div class="chapter">32 / 逐词生成</div>
+          <h2>模型不是一次生成整句，而是一次预测一个 token</h2>
+          <p>每生成一个新 token，就把它接到已有序列后面，再用新的序列预测下一个 token。</p>
+          <p>这个循环一直持续到生成结束符。</p>
+        </div>
+        <div class="viz canvas-box"><canvas id="generateCanvas" width="900" height="560"></canvas></div>
+      </section>
+
+      <section class="slide split" data-scene="maskedAttention" data-chapter="第六章">
+        <div class="copy">
+          <div class="chapter">33 / Masked Self-Attention</div>
+          <h2>训练时不能偷看未来答案</h2>
+          <p>训练时答案序列是完整的，但 Decoder 在第 t 步只能看到 y<sub>&lt;t</sub>。</p>
+          <p>所以要把未来位置设为 -∞，softmax 后这些位置权重变成 0。</p>
+        </div>
+        <div class="viz canvas-box"><canvas id="maskCanvas" width="900" height="560"></canvas></div>
+      </section>
+
+      <section class="slide split" data-scene="maskReason" data-chapter="第六章">
+        <div class="copy">
+          <div class="chapter">34 / 为什么要 Mask</div>
+          <h2>保证训练和真实使用一致</h2>
+          <p>真实使用时，未来 token 本来不存在。训练时如果让模型偷看完整答案，它会学到不真实的捷径。</p>
+          <p>Mask 的作用就是把训练环境变得像真实生成环境。</p>
+        </div>
+        <div class="formula">if j &gt; i: score<sub>ij</sub> = -∞</div>
+      </section>
+
+      <section class="slide split" data-scene="crossAttention" data-chapter="第六章">
+        <div class="copy">
+          <div class="chapter">35 / Cross-Attention</div>
+          <h2>Decoder 要回头查 Encoder 记忆</h2>
+          <p>Masked self-attention 只处理已经生成的序列。Cross-Attention 则让 Decoder 当前状态去查询 Encoder 的输出。</p>
+          <p>通俗说：写译文时，一边看已写内容，一边回头查原文。</p>
+        </div>
+        <div class="viz canvas-box"><canvas id="crossCanvas" width="900" height="560"></canvas></div>
+      </section>
+
+      <section class="slide split" data-scene="decoderBlock" data-chapter="第六章">
+        <div class="copy">
+          <div class="chapter">36 / Decoder Block</div>
+          <h2>Decoder 层比 Encoder 多一个交叉注意力</h2>
+          <p>它通常包含：Masked MHA、Add & Norm、Cross-Attention、Add & Norm、FFN、Add & Norm。</p>
+          <p>多层堆叠后得到 Decoder 输出向量 y<sub>out</sub>。</p>
+        </div>
+        <div class="formula">y<sub>out</sub> = Decoder<sub>N</sub>(y<sub>&lt;t</sub>, X<sub>out</sub>)</div>
+      </section>
+
+      <section class="slide split" data-scene="logits" data-chapter="第六章">
+        <div class="copy">
+          <div class="chapter">37 / Logits</div>
+          <h2>向量还不是词，要映射到词表长度</h2>
+          <p>Decoder 输出仍然是 512 维向量，但真实输出必须来自固定词表。</p>
+          <p>所以要乘一个 512 × vocab_size 的矩阵，得到每个词的原始分数 logits。</p>
+        </div>
+        <div class="formula">logits = y<sub>out</sub>W<sub>vocab</sub> + b</div>
+      </section>
+
+      <section class="slide split" data-scene="prob" data-chapter="第六章">
+        <div class="copy">
+          <div class="chapter">38 / 概率分布</div>
+          <h2>softmax 把 logits 变成词表概率</h2>
+          <p>每个词都会得到一个概率。概率最高的词，可以通过 argmax 直接选出。</p>
+          <p>如果用采样、温度、top-p，输出会更随机、更有创造性。</p>
+        </div>
+        <div class="viz canvas-box"><canvas id="outputCanvas" width="900" height="560"></canvas></div>
+      </section>
+
+      <section class="slide split" data-scene="loop" data-chapter="第六章">
+        <div class="copy">
+          <div class="chapter">39 / 生成循环</div>
+          <h2>输出一个 token 后，继续预测下一个</h2>
+          <p>模型不断重复：输入已有序列 → 得到概率 → 选出下一个 token → 拼回序列。</p>
+          <p>直到生成结束符，整段输出才完成。</p>
+        </div>
+        <div class="formula">while token ≠ &lt;EOS&gt;:<br />token<sub>t</sub> = sample(P(v|context))</div>
+      </section>
+
+      <section class="slide chapter-slide" data-scene="chapter" data-chapter="总结">
+        <div class="chapter">Final</div>
+        <h2>把全部链路串起来</h2>
+        <p class="lead">从绕口中文，到向量，到注意力矩阵，到 Encoder 理解，再到 Decoder 逐词生成。</p>
+      </section>
+
+      <section class="slide summary" data-scene="summary" data-chapter="总结">
+        <div class="chapter">40 / 总链路</div>
+        <h2>Transformer 完整流程</h2>
+        <div class="flow-list">
+          <div>文本</div><div>Token</div><div>Embedding + Position</div><div>Q / K / V</div><div>Self-Attention</div><div>Multi-Head</div><div>Encoder</div><div>Decoder</div><div>词表概率</div>
+        </div>
+      </section>
+
+      <section class="slide split" data-scene="architecture" data-chapter="总结">
+        <div class="copy">
+          <div class="chapter">41 / 架构差异</div>
+          <h2>不是所有 Transformer 都长一样</h2>
+          <p>视频最后提到：翻译类任务常见 Encoder-Decoder 结构，因为需要对齐输入和输出。</p>
+          <p>很多大语言模型更偏 Decoder-only，因为它们专注于生成下一个 token。</p>
+        </div>
+        <div class="formula">Encoder-Decoder：理解 + 对齐 + 生成<br />Decoder-only：基于上下文继续生成</div>
+      </section>
+
+      <section class="slide split" data-scene="whyMatter" data-chapter="总结">
+        <div class="copy">
+          <div class="chapter">42 / 为什么重要</div>
+          <h2>Transformer 把语言问题变成了可并行的关系建模</h2>
+          <p>RNN 时代更像按顺序读句子；Transformer 让所有 token 同时互相看见。</p>
+          <p>这使它非常适合处理长距离依赖，也为大语言模型打下基础。</p>
+        </div>
+        <div class="formula">核心能力：并行计算 token 关系</div>
+      </section>
+
+      <section class="slide closing" data-scene="closing" data-chapter="总结">
+        <div class="chapter">43 / 一句话记住</div>
+        <h2>每个 token 带着问题去图书馆，按匹配度读书，最后带走加权后的理解。</h2>
+        <p class="lead">这就是 Attention。多头、多层、残差、归一化和 Decoder 生成，都建立在这件事之上。</p>
       </section>
     </main>
 
     <nav class="controls" aria-label="幻灯片控制">
-      <button id="prevBtn" type="button" aria-label="上一页">‹</button>
-      <div class="progress"><span id="slideNo">1 / 14</span><i id="progressBar"></i></div>
-      <button id="replayBtn" type="button">重播动画</button>
+      <button id="prevBtn" type="button">‹</button>
+      <div class="progress"><span id="slideNo">1 / 51</span><i id="progressBar"></i></div>
+      <button id="replayBtn" type="button">重播</button>
       <button id="fullBtn" type="button">全屏</button>
-      <button id="nextBtn" type="button" aria-label="下一页">›</button>
+      <button id="nextBtn" type="button">›</button>
     </nav>
 
     <script src="script.js"></script>

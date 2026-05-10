@@ -6,23 +6,16 @@ const fullBtn = document.querySelector("#fullBtn");
 const slideNo = document.querySelector("#slideNo");
 const progressBar = document.querySelector("#progressBar");
 
-const state = {
-  index: 0,
-  timers: new Map(),
-};
-
-const colors = {
-  bg: "#050b14",
-  panel: "#0b1728",
-  grid: "rgba(102,240,255,0.12)",
-  text: "#eef8ff",
-  muted: "#91a8b8",
-  cyan: "#66f0ff",
-  blue: "#4a8cff",
-  violet: "#9c6bff",
-  green: "#4effa1",
-  amber: "#ffd166",
-  red: "#ff5c7a",
+const state = { index: 0, timers: new Map() };
+const C = {
+  bg: "#050505",
+  panel: "#101012",
+  line: "#303034",
+  text: "#f5f5f7",
+  muted: "#a1a1a6",
+  dim: "#6e6e73",
+  accent: "#0a84ff",
+  accentSoft: "rgba(10,132,255,0.22)",
 };
 
 function clearTimer(key) {
@@ -54,8 +47,8 @@ function showSlide(index) {
 }
 
 function replay() {
-  const active = slides[state.index];
   clearAllTimers();
+  const active = slides[state.index];
   active.classList.remove("enter");
   void active.offsetWidth;
   active.classList.add("enter");
@@ -69,7 +62,6 @@ fullBtn.addEventListener("click", () => {
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen();
 });
-
 document.addEventListener("keydown", (event) => {
   if (event.key === "ArrowRight" || event.key === " ") showSlide(state.index + 1);
   if (event.key === "ArrowLeft") showSlide(state.index - 1);
@@ -78,71 +70,62 @@ document.addEventListener("keydown", (event) => {
 });
 
 function runScene(scene, reset = false) {
-  if (scene === "cover") animateCover();
   if (scene === "tokens") buildTokenLab(reset);
-  if (scene === "embedding") animateEmbedding();
-  if (scene === "qkv") animateQkv();
-  if (scene === "attention") animateAttention();
-  if (scene === "softmax") animateSoftmax();
-  if (scene === "heads") animateHeads();
-  if (scene === "position") animatePosition();
-  if (scene === "encoder") animateEncoder();
-  if (scene === "decoder") animateDecoder();
-  if (scene === "cross") animateCross();
-  if (scene === "output") animateOutput();
+  if (scene === "ids") buildIds(reset);
+  if (scene === "cover") drawLoop("cover", "#coverCanvas", drawCover);
+  if (scene === "relation") drawLoop("relation", "#relationCanvas", drawRelation);
+  if (scene === "embedding") drawLoop("embedding", "#embeddingCanvas", drawEmbedding);
+  if (scene === "position") drawLoop("position", "#positionCanvas", drawPosition);
+  if (scene === "qkvIntro") drawLoop("qkv", "#qkvCanvas", drawQkv);
+  if (scene === "library1") drawLoop("library", "#libraryCanvas", drawLibrary);
+  if (scene === "score") drawLoop("score", "#scoreCanvas", drawScore);
+  if (scene === "softmax") drawLoop("softmax", "#softmaxCanvas", drawSoftmax);
+  if (scene === "matrix") drawLoop("matrix", "#matrixCanvas", drawMatrix);
+  if (scene === "multiHeadWhy") drawLoop("heads", "#headsCanvas", drawHeads);
+  if (scene === "encoderBlock") drawLoop("encoder", "#encoderCanvas", drawEncoder);
+  if (scene === "autoregressive") drawLoop("generate", "#generateCanvas", drawGenerate);
+  if (scene === "maskedAttention") drawLoop("mask", "#maskCanvas", drawMask);
+  if (scene === "crossAttention") drawLoop("cross", "#crossCanvas", drawCross);
+  if (scene === "prob") drawLoop("output", "#outputCanvas", drawOutput);
 }
 
-function setupCanvas(canvas, aspect) {
+function setup(canvas, aspect = 560 / 900) {
   const ctx = canvas.getContext("2d");
   const rect = canvas.getBoundingClientRect();
   const ratio = window.devicePixelRatio || 1;
-  const cssWidth = Math.max(1, rect.width);
-  const cssHeight = Math.max(1, cssWidth * aspect);
-  canvas.width = Math.round(cssWidth * ratio);
-  canvas.height = Math.round(cssHeight * ratio);
+  const w = Math.max(1, rect.width);
+  const h = Math.max(1, w * aspect);
+  canvas.width = Math.round(w * ratio);
+  canvas.height = Math.round(h * ratio);
   ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  return { ctx, w: cssWidth, h: cssHeight };
+  return { ctx, w, h };
 }
 
-function text(ctx, value, x, y, size = 18, color = colors.text, weight = 800, align = "center") {
-  ctx.fillStyle = color;
-  ctx.font = `${weight} ${size}px Inter, PingFang SC, Arial`;
-  ctx.textAlign = align;
-  ctx.textBaseline = "middle";
-  ctx.fillText(value, x, y);
+function drawLoop(key, selector, draw) {
+  const canvas = document.querySelector(selector);
+  if (!canvas) return;
+  const start = performance.now();
+  const loop = (now) => {
+    const s = setup(canvas);
+    draw(s.ctx, s.w, s.h, (now - start) / 1000);
+    const id = requestAnimationFrame(loop);
+    state.timers.set(key, id);
+  };
+  loop(start);
 }
 
-function roundRect(ctx, x, y, w, h, r = 8, fill = colors.panel, stroke = colors.grid) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-  ctx.fillStyle = fill;
-  ctx.fill();
-  ctx.strokeStyle = stroke;
-  ctx.lineWidth = 1.2;
-  ctx.stroke();
-}
-
-function drawGrid(ctx, w, h, step = 28) {
-  ctx.fillStyle = colors.bg;
+function bg(ctx, w, h) {
+  ctx.fillStyle = C.bg;
   ctx.fillRect(0, 0, w, h);
-  ctx.strokeStyle = "rgba(102,240,255,0.065)";
+  ctx.strokeStyle = "rgba(255,255,255,0.045)";
   ctx.lineWidth = 1;
-  for (let x = 0; x < w; x += step) {
+  for (let x = 0; x < w; x += 42) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, h);
     ctx.stroke();
   }
-  for (let y = 0; y < h; y += step) {
+  for (let y = 0; y < h; y += 42) {
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(w, y);
@@ -150,430 +133,355 @@ function drawGrid(ctx, w, h, step = 28) {
   }
 }
 
-function animate(key, canvas, aspect, draw) {
-  const start = performance.now();
-  const loop = (now) => {
-    const setup = setupCanvas(canvas, aspect);
-    draw(setup.ctx, setup.w, setup.h, (now - start) / 1000);
-    const id = requestAnimationFrame(loop);
-    state.timers.set(key, id);
-  };
-  loop(start);
+function t(ctx, s, x, y, size = 18, color = C.text, weight = 650, align = "center") {
+  ctx.fillStyle = color;
+  ctx.font = `${weight} ${size}px -apple-system, BlinkMacSystemFont, PingFang SC, Arial`;
+  ctx.textAlign = align;
+  ctx.textBaseline = "middle";
+  ctx.fillText(s, x, y);
 }
 
-function animateCover() {
-  const canvas = document.querySelector("#coverCanvas");
-  if (!canvas) return;
-  animate("cover", canvas, 620 / 900, (ctx, w, h, t) => {
-    drawGrid(ctx, w, h, 36);
-    const cx = w / 2;
-    const cy = h / 2;
-    for (let r = 70; r < Math.min(w, h) * 0.48; r += 56) {
-      ctx.strokeStyle = `rgba(102,240,255,${0.22 - r / 1800})`;
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, t * 0.22, Math.PI * 1.35 + t * 0.22);
-      ctx.stroke();
-    }
-    const words = ["Token", "Q", "K", "V", "Softmax", "FFN", "Mask", "Next"];
-    words.forEach((word, i) => {
-      const angle = t * 0.55 + (Math.PI * 2 * i) / words.length;
-      const r = 145 + (i % 2) * 72;
-      const x = cx + Math.cos(angle) * r;
-      const y = cy + Math.sin(angle) * r;
-      roundRect(ctx, x - 54, y - 22, 108, 44, 6, "rgba(102,240,255,0.08)", "rgba(102,240,255,0.38)");
-      text(ctx, word, x, y, 17, i % 3 === 0 ? colors.green : colors.cyan, 900);
-      ctx.strokeStyle = "rgba(102,240,255,0.18)";
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    });
-    roundRect(ctx, cx - 118, cy - 54, 236, 108, 10, "rgba(9,22,38,0.92)", "rgba(78,255,161,0.58)");
-    text(ctx, "Transformer", cx, cy - 12, 30, colors.text, 950);
-    text(ctx, "attention engine", cx, cy + 24, 15, colors.muted, 800);
-  });
+function box(ctx, x, y, w, h, fill = C.panel, stroke = C.line) {
+  ctx.fillStyle = fill;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, 10);
+  ctx.fill();
+  ctx.stroke();
+}
+
+function arrow(ctx, x1, y1, x2, y2, color = C.accent) {
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  const a = Math.atan2(y2 - y1, x2 - x1);
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - 10 * Math.cos(a - 0.45), y2 - 10 * Math.sin(a - 0.45));
+  ctx.lineTo(x2 - 10 * Math.cos(a + 0.45), y2 - 10 * Math.sin(a + 0.45));
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
 }
 
 function buildTokenLab(reset) {
   const tokens = ["用", "毒", "毒", "毒蛇", "，", "毒蛇", "会不会", "被", "毒", "毒死", "？"];
-  const ids = [910, 4812, 4812, 33016, 11, 33016, 7642, 928, 4812, 44802, 30];
-  const tokenStream = document.querySelector(".token-stream");
-  const idStream = document.querySelector(".id-stream");
-  if (!tokenStream || !idStream) return;
-  if (!reset && tokenStream.children.length) return;
-  tokenStream.innerHTML = "";
-  idStream.innerHTML = "";
+  const row = document.querySelector(".token-stream");
+  if (!row) return;
+  if (!reset && row.children.length) return;
+  row.innerHTML = "";
   tokens.forEach((token, i) => {
     const el = document.createElement("span");
     el.textContent = token;
-      el.style.animationDelay = `${i * 45}ms`;
-    tokenStream.appendChild(el);
-    const id = document.createElement("span");
-    id.textContent = String(ids[i]);
-    id.style.animationDelay = `${300 + i * 42}ms`;
-    idStream.appendChild(id);
+    el.style.animationDelay = `${i * 36}ms`;
+    row.appendChild(el);
   });
 }
 
-function animateEmbedding() {
-  const canvas = document.querySelector("#embeddingCanvas");
-  if (!canvas) return;
-  animate("embedding", canvas, 560 / 940, (ctx, w, h, t) => {
-    drawGrid(ctx, w, h);
-    const tokens = ["毒", "毒蛇", "毒死"];
-    tokens.forEach((token, i) => {
-      const y = 126 + i * 112;
-      roundRect(ctx, 54, y - 34, 158, 68, 8, "rgba(78,255,161,0.08)", "rgba(78,255,161,0.36)");
-      text(ctx, token, 133, y, 20, colors.text, 900);
-      ctx.strokeStyle = colors.cyan;
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      ctx.moveTo(220, y);
-      ctx.lineTo(320, y);
-      ctx.stroke();
-      text(ctx, "lookup", 270, y - 22, 13, colors.muted, 800);
-      for (let j = 0; j < 10; j += 1) {
-        const value = Math.sin(i * 1.7 + j * 0.95 + t * 1.2);
-        const barW = 18 + Math.abs(value) * 78;
-        const x = 344 + j * 52;
-        const color = value > 0 ? colors.cyan : colors.violet;
-        roundRect(ctx, x, y - 24, 38, 48, 5, "rgba(255,255,255,0.035)", "rgba(102,240,255,0.15)");
-        ctx.fillStyle = color;
-        ctx.globalAlpha = 0.35 + Math.abs(value) * 0.55;
-        ctx.fillRect(x + 8, y + 18, 22, -barW * 0.38);
-        ctx.globalAlpha = 1;
-      }
-    });
-    text(ctx, "Embedding table: id → dense vector", w / 2, 42, 24, colors.cyan, 950);
-    text(ctx, "每一行都是一个 token 的 512 维语义坐标", w / 2, h - 28, 16, colors.muted, 800);
+function buildIds(reset) {
+  const ids = ["910", "4812", "4812", "33016", "11", "33016", "7642", "928", "4812", "44802", "30"];
+  const boxEl = document.querySelector(".id-lab");
+  if (!boxEl) return;
+  if (!reset && boxEl.children.length) return;
+  boxEl.innerHTML = "";
+  ids.forEach((id, i) => {
+    const el = document.createElement("span");
+    el.textContent = id;
+    el.style.animationDelay = `${i * 34}ms`;
+    boxEl.appendChild(el);
   });
 }
 
-function animateQkv() {
-  const canvas = document.querySelector("#qkvCanvas");
-  if (!canvas) return;
-  animate("qkv", canvas, 560 / 940, (ctx, w, h, t) => {
-    drawGrid(ctx, w, h);
-    const cx = 145;
-    const cy = h / 2;
-    roundRect(ctx, cx - 74, cy - 44, 148, 88, 10, "rgba(102,240,255,0.08)", "rgba(102,240,255,0.44)");
-    text(ctx, "X", cx, cy - 10, 36, colors.text, 950);
-    text(ctx, "token vector", cx, cy + 24, 14, colors.muted, 800);
-    const targets = [
-      ["Q", "我要找什么", colors.green, 330, 120],
-      ["K", "我能被谁匹配", colors.cyan, 500, 280],
-      ["V", "我贡献的内容", colors.amber, 670, 440],
-    ];
-    targets.forEach(([name, label, color, x, y], i) => {
-      const p = (Math.sin(t * 2 + i) + 1) / 2;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([12, 10]);
-      ctx.lineDashOffset = -t * 40;
-      ctx.beginPath();
-      ctx.moveTo(cx + 78, cy);
-      ctx.bezierCurveTo(260, cy - 120 + i * 80, x - 120, y, x - 70, y);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      roundRect(ctx, x - 76, y - 42, 152, 84, 10, `rgba(102,240,255,${0.06 + p * 0.04})`, color);
-      text(ctx, name, x, y - 10, 34, color, 950);
-      text(ctx, label, x, y + 24, 15, colors.text, 800);
-      text(ctx, `W${name}`, (cx + x) / 2, (cy + y) / 2 - 24, 15, color, 900);
-    });
-    text(ctx, "三套权重矩阵，把同一份 X 投影成三种角色", w / 2, 42, 22, colors.cyan, 950);
-  });
-}
-
-function animateAttention() {
-  const canvas = document.querySelector("#attentionCanvas");
-  if (!canvas) return;
-  animate("attention", canvas, 390 / 1320, (ctx, w, h, t) => {
-    drawGrid(ctx, w, h, 32);
-    const words = ["用", "毒", "毒蛇", "被", "毒死"];
-    const weights = [
-      [0.07, 0.18, 0.32, 0.20, 0.23],
-      [0.04, 0.25, 0.45, 0.16, 0.10],
-      [0.03, 0.22, 0.28, 0.34, 0.13],
-      [0.05, 0.18, 0.40, 0.27, 0.10],
-      [0.08, 0.10, 0.16, 0.24, 0.42],
-    ];
-    const row = Math.floor((t * 1.05) % words.length);
-    const cell = Math.min(50, (h - 120) / 5);
-    const gx = w / 2 - cell * 2.5;
-    const gy = 76;
-    text(ctx, `Query: ${words[row]}`, 154, gy + row * cell + cell / 2, 20, colors.green, 950, "left");
-    ctx.strokeStyle = colors.green;
-    ctx.lineWidth = 3;
+function drawCover(ctx, w, h, time) {
+  bg(ctx, w, h);
+  const cx = w / 2, cy = h / 2;
+  const words = ["Token", "Embedding", "Q", "K", "V", "Attention", "Encoder", "Decoder"];
+  words.forEach((word, i) => {
+    const a = time * 0.35 + (Math.PI * 2 * i) / words.length;
+    const r = 140 + (i % 2) * 70;
+    const x = cx + Math.cos(a) * r;
+    const y = cy + Math.sin(a) * r;
+    box(ctx, x - 70, y - 23, 140, 46, "#0d0d0f", i % 2 ? C.line : C.accent);
+    t(ctx, word, x, y, 16, i % 2 ? C.text : C.accent, 700);
+    ctx.strokeStyle = "rgba(10,132,255,0.20)";
     ctx.beginPath();
-    ctx.moveTo(260, gy + row * cell + cell / 2);
-    ctx.lineTo(gx - 28, gy + row * cell + cell / 2);
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(x, y);
     ctx.stroke();
-    words.forEach((word, i) => {
-      text(ctx, word, gx - 16, gy + i * cell + cell / 2, 13, colors.muted, 850, "right");
-      text(ctx, word, gx + i * cell + cell / 2, gy - 18, 13, colors.muted, 850);
-    });
-    for (let r = 0; r < 5; r += 1) {
-      for (let c = 0; c < 5; c += 1) {
-        const value = weights[r][c];
-        ctx.fillStyle = `rgba(102,240,255,${0.08 + value * 1.35})`;
-        ctx.fillRect(gx + c * cell, gy + r * cell, cell - 4, cell - 4);
-        if (r === row) {
-          ctx.strokeStyle = colors.red;
-          ctx.lineWidth = 2.5;
-          ctx.strokeRect(gx + c * cell + 1, gy + r * cell + 1, cell - 6, cell - 6);
-        }
-        text(ctx, value.toFixed(2), gx + c * cell + cell / 2, gy + r * cell + cell / 2, 14, colors.text, 900);
-      }
-    }
-    const bx = gx + 5 * cell + 90;
-    weights[row].forEach((value, i) => {
-      const y = gy + i * 52;
-      roundRect(ctx, bx, y, 250, 32, 4, "rgba(255,209,102,0.08)", "rgba(255,209,102,0.12)");
-      ctx.fillStyle = colors.amber;
-      ctx.globalAlpha = 0.32 + value;
-      ctx.fillRect(bx, y, 250 * value * 1.9, 32);
+  });
+  box(ctx, cx - 120, cy - 48, 240, 96, "#050505", C.accent);
+  t(ctx, "Transformer", cx, cy - 8, 26, C.text, 760);
+  t(ctx, "relationship engine", cx, cy + 24, 14, C.muted, 600);
+}
+
+function drawRelation(ctx, w, h, time) {
+  bg(ctx, w, h);
+  const words = ["用", "毒", "毒", "毒蛇", "毒蛇", "被", "毒", "毒死"];
+  const xs = words.map((_, i) => 80 + i * ((w - 160) / (words.length - 1)));
+  const y = 120;
+  words.forEach((word, i) => {
+    box(ctx, xs[i] - 30, y - 24, 60, 48, "#101010", C.line);
+    t(ctx, word, xs[i], y, 18, C.text, 700);
+  });
+  const arcs = [[1, 3], [3, 7], [5, 7], [0, 1]];
+  arcs.forEach(([a, b], i) => {
+    ctx.strokeStyle = i === Math.floor(time % arcs.length) ? C.accent : "#555";
+    ctx.lineWidth = i === Math.floor(time % arcs.length) ? 3 : 1.5;
+    ctx.beginPath();
+    const mid = (xs[a] + xs[b]) / 2;
+    ctx.moveTo(xs[a], y + 28);
+    ctx.quadraticCurveTo(mid, y + 120 + i * 22, xs[b], y + 28);
+    ctx.stroke();
+  });
+  t(ctx, "语义来自关系，而不是孤立文字", w / 2, h - 70, 24, C.text, 700);
+}
+
+function drawEmbedding(ctx, w, h, time) {
+  bg(ctx, w, h);
+  const tokens = ["毒", "毒蛇", "毒死"];
+  tokens.forEach((token, i) => {
+    const y = 120 + i * 130;
+    box(ctx, 70, y - 34, 130, 68, "#101010", C.line);
+    t(ctx, token, 135, y, 22, C.text, 700);
+    arrow(ctx, 220, y, 310, y);
+    for (let j = 0; j < 12; j++) {
+      const x = 330 + j * 38;
+      const v = Math.abs(Math.sin(time + i * 1.3 + j * 0.7));
+      box(ctx, x, y - 30, 24, 60, "#0b0b0c", "#242426");
+      ctx.fillStyle = j % 3 === 0 ? C.accent : "#f5f5f7";
+      ctx.globalAlpha = 0.25 + v * 0.55;
+      ctx.fillRect(x + 5, y + 22, 14, -v * 44);
       ctx.globalAlpha = 1;
-      text(ctx, `${words[i]} × ${value.toFixed(2)}`, bx + 125, y + 16, 15, colors.text, 850);
-    });
-    text(ctx, "softmax 权重矩阵", w / 2, 34, 22, colors.cyan, 950);
-    text(ctx, "颜色越亮，当前 Query 越应该吸收该 Value", w / 2, h - 22, 15, colors.muted, 800);
-  });
-}
-
-function animateSoftmax() {
-  const canvas = document.querySelector("#softmaxCanvas");
-  if (!canvas) return;
-  animate("softmax", canvas, 560 / 940, (ctx, w, h, t) => {
-    drawGrid(ctx, w, h);
-    const labels = ["毒", "毒蛇", "被", "毒死"];
-    const scores = [1.7, 2.3, 1.5, 1.0];
-    const exp = scores.map(Math.exp);
-    const sum = exp.reduce((a, b) => a + b, 0);
-    const weights = exp.map((v) => v / sum);
-    text(ctx, "score → exp(score) → normalized weight", w / 2, 42, 22, colors.cyan, 950);
-    labels.forEach((label, i) => {
-      const x = 130 + i * 190;
-      const scoreH = scores[i] * 54;
-      const weightH = weights[i] * 520;
-      const grow = Math.min(1, Math.max(0, (t * 0.8 - i * 0.12) % 2));
-      roundRect(ctx, x - 58, h - 110 - scoreH, 52, scoreH, 5, "rgba(74,140,255,0.28)", "rgba(74,140,255,0.4)");
-      roundRect(ctx, x + 10, h - 110 - weightH * grow, 72, weightH * grow, 5, "rgba(78,255,161,0.28)", "rgba(78,255,161,0.46)");
-      text(ctx, label, x + 10, h - 62, 14, colors.text, 850);
-      text(ctx, scores[i].toFixed(1), x - 32, h - 124 - scoreH, 14, colors.blue, 900);
-      text(ctx, weights[i].toFixed(2), x + 46, h - 124 - weightH * grow, 14, colors.green, 900);
-    });
-    text(ctx, "蓝色是原始分数，绿色是归一化后的注意力预算", w / 2, 92, 17, colors.muted, 800);
-  });
-}
-
-function animateHeads() {
-  const canvas = document.querySelector("#headsCanvas");
-  if (!canvas) return;
-  animate("heads", canvas, 560 / 940, (ctx, w, h, t) => {
-    drawGrid(ctx, w, h);
-    const heads = [
-      ["Head 1", "修饰关系", colors.green],
-      ["Head 2", "主谓宾", colors.cyan],
-      ["Head 3", "长距离依赖", colors.violet],
-      ["Head 4", "局部搭配", colors.amber],
-    ];
-    heads.forEach(([name, desc, color], i) => {
-      const col = i % 2;
-      const row = Math.floor(i / 2);
-      const x = 92 + col * 410;
-      const y = 92 + row * 175;
-      roundRect(ctx, x, y, 330, 126, 10, "rgba(102,240,255,0.06)", color);
-      text(ctx, name, x + 26, y + 32, 23, color, 950, "left");
-      text(ctx, desc, x + 26, y + 66, 17, colors.text, 850, "left");
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 6;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(x + 26, y + 100);
-      ctx.lineTo(x + 26 + 250 * ((Math.sin(t * 1.8 + i) + 1) / 2), y + 100);
-      ctx.stroke();
-    });
-    roundRect(ctx, w / 2 - 160, h - 92, 320, 58, 8, "rgba(78,255,161,0.09)", "rgba(78,255,161,0.44)");
-    text(ctx, "Concat + Wᵒ", w / 2, h - 63, 24, colors.green, 950);
-    text(ctx, "多头并行之后拼接，再投影回模型维度", w / 2, 44, 22, colors.cyan, 950);
-  });
-}
-
-function animatePosition() {
-  const canvas = document.querySelector("#positionCanvas");
-  if (!canvas) return;
-  animate("position", canvas, 560 / 940, (ctx, w, h, t) => {
-    drawGrid(ctx, w, h);
-    const left = 74;
-    const right = w - 70;
-    const top = 118;
-    const bottom = h - 126;
-    text(ctx, "不同频率的 sin/cos，为每个位置生成唯一指纹", w / 2, 42, 22, colors.cyan, 950);
-    const waves = [
-      [1, colors.green, "dim 0"],
-      [2, colors.cyan, "dim 1"],
-      [4, colors.violet, "dim 2"],
-    ];
-    waves.forEach(([freq, color, label], wi) => {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      for (let x = left; x <= right; x += 3) {
-        const p = (x - left) / (right - left);
-        const y = top + (bottom - top) * (0.5 + Math.sin(p * Math.PI * 2 * freq + t + wi) * 0.22);
-        if (x === left) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      text(ctx, label, right - 50, top + 25 + wi * 30, 15, color, 900, "left");
-    });
-    for (let i = 0; i < 8; i += 1) {
-      const x = left + ((right - left) / 7) * i;
-      roundRect(ctx, x - 24, bottom + 28, 48, 36, 4, "rgba(255,255,255,0.04)", "rgba(102,240,255,0.24)");
-      text(ctx, String(i), x, bottom + 46, 17, colors.text, 900);
     }
-    const mx = left + ((right - left) * ((t * 0.13) % 1));
-    ctx.strokeStyle = colors.red;
-    ctx.lineWidth = 2.4;
+  });
+  t(ctx, "每个 token 查表得到一个高维向量", w / 2, 42, 22, C.text, 700);
+}
+
+function drawPosition(ctx, w, h, time) {
+  bg(ctx, w, h);
+  const left = 70, right = w - 70, top = 120, bottom = h - 115;
+  [[1, C.accent], [2, C.text], [4, C.dim]].forEach(([freq, color], wi) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = wi === 0 ? 3 : 1.8;
     ctx.beginPath();
-    ctx.moveTo(mx, top - 20);
-    ctx.lineTo(mx, bottom + 78);
+    for (let x = left; x <= right; x += 3) {
+      const p = (x - left) / (right - left);
+      const y = top + (bottom - top) * (0.5 + Math.sin(p * Math.PI * 2 * freq + time + wi) * 0.23);
+      if (x === left) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
     ctx.stroke();
   });
+  for (let i = 0; i < 8; i++) {
+    const x = left + ((right - left) / 7) * i;
+    box(ctx, x - 24, bottom + 40, 48, 34, "#101010", C.line);
+    t(ctx, String(i), x, bottom + 57, 16, C.text, 700);
+  }
+  t(ctx, "位置编码：给同时输入的 token 加上顺序指纹", w / 2, 44, 22, C.text, 700);
 }
 
-function animateEncoder() {
-  const canvas = document.querySelector("#encoderCanvas");
-  if (!canvas) return;
-  animate("encoder", canvas, 560 / 940, (ctx, w, h, t) => {
-    drawGrid(ctx, w, h);
-    const blocks = [
-      ["Multi-Head Attention", colors.cyan],
-      ["Add + LayerNorm", colors.green],
-      ["Feed Forward Network", colors.violet],
-      ["Add + LayerNorm", colors.amber],
-    ];
-    const x = w / 2 - 205;
-    blocks.forEach(([label, color], i) => {
-      const y = 80 + i * 104;
-      const active = (Math.floor(t * 1.2) % blocks.length) === i;
-      roundRect(ctx, x, y, 410, 72, 8, active ? "rgba(102,240,255,0.13)" : "rgba(102,240,255,0.055)", active ? color : "rgba(102,240,255,0.22)");
-      text(ctx, label, w / 2, y + 36, 22, active ? color : colors.text, 950);
-      if (i < blocks.length - 1) {
-        ctx.strokeStyle = colors.muted;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(w / 2, y + 72);
-        ctx.lineTo(w / 2, y + 104);
-        ctx.stroke();
-      }
-    });
-    text(ctx, "Encoder Block × N", w / 2, 42, 24, colors.cyan, 950);
-    text(ctx, "Residual path keeps original signal flowing", w / 2, h - 36, 17, colors.muted, 800);
-    ctx.strokeStyle = "rgba(78,255,161,0.42)";
-    ctx.lineWidth = 3;
-    ctx.setLineDash([10, 8]);
-    ctx.lineDashOffset = -t * 36;
+function drawQkv(ctx, w, h, time) {
+  bg(ctx, w, h);
+  const cx = 125, cy = h / 2;
+  box(ctx, cx - 58, cy - 44, 116, 88, "#101010", C.accent);
+  t(ctx, "X", cx, cy, 34, C.text, 760);
+  [["Q", "我想找什么", 360, 115], ["K", "我能匹配谁", 525, 280], ["V", "我贡献什么", 690, 445]].forEach(([name, desc, x, y], i) => {
+    arrow(ctx, cx + 66, cy, x - 82, y, i === 0 ? C.accent : "#777");
+    box(ctx, x - 78, y - 42, 156, 84, "#101010", i === 0 ? C.accent : C.line);
+    t(ctx, name, x, y - 10, 30, i === 0 ? C.accent : C.text, 760);
+    t(ctx, desc, x, y + 24, 15, C.muted, 600);
+  });
+}
+
+function drawLibrary(ctx, w, h, time) {
+  bg(ctx, w, h);
+  box(ctx, 56, h / 2 - 44, 150, 88, "#101010", C.accent);
+  t(ctx, "你的 Q", 131, h / 2 - 8, 22, C.text, 720);
+  t(ctx, "问题", 131, h / 2 + 24, 15, C.muted, 600);
+  const books = [["书 A", 0.22], ["书 B", 0.76], ["书 C", 0.42], ["书 D", 0.58]];
+  books.forEach(([name, score], i) => {
+    const x = 350 + i * 118;
+    const y = h / 2 - 72;
+    box(ctx, x, y, 78, 144, "#101010", score > 0.6 ? C.accent : C.line);
+    t(ctx, name, x + 39, y + 34, 18, C.text, 700);
+    t(ctx, "K", x + 39, y + 72, 18, C.accent, 720);
+    t(ctx, "V", x + 39, y + 108, 18, C.muted, 720);
+    ctx.strokeStyle = score > 0.6 ? C.accent : "#555";
+    ctx.lineWidth = 1 + score * 3;
     ctx.beginPath();
-    ctx.moveTo(x - 44, 116);
-    ctx.bezierCurveTo(x - 120, 210, x - 120, 310, x - 44, 428);
+    ctx.moveTo(210, h / 2);
+    ctx.lineTo(x, y + 72);
     ctx.stroke();
-    ctx.setLineDash([]);
-    text(ctx, "residual", x - 86, 272, 15, colors.green, 900);
   });
+  t(ctx, "Q 匹配书脊标签 K，再按匹配度阅读内容 V", w / 2, h - 54, 22, C.text, 700);
 }
 
-function animateDecoder() {
-  const canvas = document.querySelector("#decoderCanvas");
-  if (!canvas) return;
-  animate("decoder", canvas, 560 / 940, (ctx, w, h, t) => {
-    drawGrid(ctx, w, h);
-    text(ctx, "Mask: future positions are blocked", w / 2, 42, 23, colors.cyan, 950);
-    const n = 6;
-    const cell = 46;
-    const x0 = w / 2 - (n * cell) / 2 - 42;
-    const y0 = 104;
-    const row = Math.floor((t * 1.25) % n);
-    for (let r = 0; r < n; r += 1) {
-      for (let c = 0; c < n; c += 1) {
-        const future = c > r;
-        const x = x0 + c * cell;
-        const y = y0 + r * cell;
-        ctx.fillStyle = future ? "rgba(255,92,122,0.18)" : "rgba(78,255,161,0.14)";
-        ctx.fillRect(x, y, cell - 4, cell - 4);
-        ctx.strokeStyle = r === row ? colors.cyan : "rgba(102,240,255,0.18)";
-        ctx.strokeRect(x, y, cell - 4, cell - 4);
-        text(ctx, future ? "−∞" : "ok", x + cell / 2 - 2, y + cell / 2 - 2, 16, future ? colors.red : colors.green, 900);
-      }
+function drawScore(ctx, w, h, time) {
+  bg(ctx, w, h);
+  const words = ["用", "毒", "毒蛇", "被", "毒死"];
+  const row = Math.floor(time % words.length);
+  words.forEach((word, i) => {
+    box(ctx, 90, 100 + i * 72, 90, 46, "#101010", i === row ? C.accent : C.line);
+    t(ctx, word, 135, 123 + i * 72, 17, C.text, 700);
+    box(ctx, 650, 100 + i * 72, 90, 46, "#101010", C.line);
+    t(ctx, word, 695, 123 + i * 72, 17, C.text, 700);
+  });
+  t(ctx, "Q", 135, 62, 18, C.accent, 760);
+  t(ctx, "K", 695, 62, 18, C.accent, 760);
+  words.forEach((_, i) => {
+    const y1 = 123 + row * 72;
+    const y2 = 123 + i * 72;
+    ctx.strokeStyle = i === row ? C.accent : "#555";
+    ctx.lineWidth = i === row ? 3 : 1.3;
+    ctx.beginPath();
+    ctx.moveTo(185, y1);
+    ctx.bezierCurveTo(320, y1, 480, y2, 645, y2);
+    ctx.stroke();
+  });
+  t(ctx, "每个 Query 会和所有 Key 做相似度打分", w / 2, h - 52, 22, C.text, 700);
+}
+
+function drawSoftmax(ctx, w, h, time) {
+  bg(ctx, w, h);
+  const labels = ["毒", "毒蛇", "被", "毒死"];
+  const vals = [0.18, 0.44, 0.14, 0.24];
+  labels.forEach((label, i) => {
+    const x = 160 + i * 160;
+    const height = vals[i] * 520;
+    box(ctx, x, h - 120 - height, 80, height, "#101010", C.line);
+    ctx.fillStyle = i === 1 ? C.accent : "#f5f5f7";
+    ctx.globalAlpha = i === 1 ? 0.9 : 0.38;
+    ctx.fillRect(x, h - 120 - height, 80, height);
+    ctx.globalAlpha = 1;
+    t(ctx, label, x + 40, h - 82, 18, C.text, 700);
+    t(ctx, vals[i].toFixed(2), x + 40, h - 136 - height, 16, C.muted, 650);
+  });
+  t(ctx, "softmax：分数变成总和为 1 的注意力预算", w / 2, 46, 22, C.text, 700);
+}
+
+function drawMatrix(ctx, w, h, time) {
+  bg(ctx, w, h);
+  const words = ["用", "毒", "毒蛇", "被", "毒死"];
+  const weights = [
+    [0.06, 0.44, 0.24, 0.10, 0.16],
+    [0.08, 0.20, 0.35, 0.12, 0.25],
+    [0.05, 0.18, 0.42, 0.15, 0.20],
+    [0.04, 0.16, 0.24, 0.20, 0.36],
+    [0.03, 0.17, 0.30, 0.18, 0.32],
+  ];
+  const cell = 62, x0 = w / 2 - cell * 2.5, y0 = 110;
+  const row = Math.floor(time % 5);
+  words.forEach((word, i) => {
+    t(ctx, word, x0 - 18, y0 + i * cell + cell / 2, 14, C.muted, 650, "right");
+    t(ctx, word, x0 + i * cell + cell / 2, y0 - 20, 14, C.muted, 650);
+  });
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      const v = weights[r][c];
+      ctx.fillStyle = r === row ? `rgba(10,132,255,${0.16 + v})` : `rgba(255,255,255,${0.05 + v * 0.35})`;
+      ctx.fillRect(x0 + c * cell, y0 + r * cell, cell - 4, cell - 4);
+      t(ctx, v.toFixed(2), x0 + c * cell + cell / 2, y0 + r * cell + cell / 2, 13, C.text, 650);
     }
-    text(ctx, `step ${row + 1}`, x0 + n * cell + 82, y0 + 96, 20, colors.cyan, 950);
-    text(ctx, "未来位置", x0 + n * cell + 82, y0 + 128, 16, colors.text, 850);
-    text(ctx, "置为 −∞", x0 + n * cell + 82, y0 + 154, 16, colors.red, 900);
-  });
+  }
+  t(ctx, "一行 = 一个 token 看全句的关注分布", w / 2, h - 52, 22, C.text, 700);
 }
 
-function animateCross() {
-  const canvas = document.querySelector("#crossCanvas");
-  if (!canvas) return;
-  animate("cross", canvas, 560 / 940, (ctx, w, h, t) => {
-    drawGrid(ctx, w, h);
-    text(ctx, "Cross-Attention: decoder queries encoder memory", w / 2, 42, 22, colors.cyan, 950);
-    const leftX = 90;
-    const rightX = w - 300;
-    const y0 = 108;
-    const enc = ["用", "毒", "毒蛇", "毒死"];
-    const dec = ["<BOS>", "毒蛇", "不会"];
-    enc.forEach((label, i) => {
-      const y = y0 + i * 82;
-      roundRect(ctx, leftX, y, 210, 48, 6, "rgba(74,140,255,0.08)", "rgba(74,140,255,0.32)");
-      text(ctx, label, leftX + 105, y + 24, 17, colors.text, 850);
-    });
-    dec.forEach((label, i) => {
-      const y = y0 + 38 + i * 78;
-      roundRect(ctx, rightX, y, 220, 54, 6, "rgba(78,255,161,0.08)", "rgba(78,255,161,0.36)");
-      text(ctx, label, rightX + 110, y + 27, 18, colors.text, 900);
-    });
-    text(ctx, "Encoder X_out", leftX + 105, y0 - 38, 18, colors.blue, 900);
-    text(ctx, "Decoder state", rightX + 110, y0 + 8, 18, colors.green, 900);
-    dec.forEach((_, di) => {
-      enc.forEach((__, ei) => {
-        const strength = 0.22 + 0.55 * ((Math.sin(t * 1.4 + di * 1.7 + ei) + 1) / 2);
-        ctx.strokeStyle = `rgba(102,240,255,${strength})`;
-        ctx.lineWidth = 1.5 + strength * 3;
-        ctx.setLineDash([10, 10]);
-        ctx.lineDashOffset = -t * 42;
-        ctx.beginPath();
-        ctx.moveTo(rightX, y0 + 65 + di * 78);
-        ctx.bezierCurveTo(w / 2 + 80, y0 + 65 + di * 78, w / 2 - 80, y0 + 24 + ei * 82, leftX + 210, y0 + 24 + ei * 82);
-        ctx.stroke();
-      });
-    });
-    ctx.setLineDash([]);
+function drawHeads(ctx, w, h, time) {
+  bg(ctx, w, h);
+  const heads = ["修饰关系", "动作关系", "实体关系", "长距离依赖"];
+  heads.forEach((label, i) => {
+    const x = 110 + (i % 2) * 340;
+    const y = 110 + Math.floor(i / 2) * 150;
+    box(ctx, x, y, 270, 110, "#101010", i === Math.floor(time % 4) ? C.accent : C.line);
+    t(ctx, `Head ${i + 1}`, x + 34, y + 34, 20, C.text, 720, "left");
+    t(ctx, label, x + 34, y + 72, 18, C.muted, 650, "left");
   });
+  t(ctx, "多个头并行观察不同关系，再拼接回来", w / 2, h - 54, 22, C.text, 700);
 }
 
-function animateOutput() {
-  const canvas = document.querySelector("#outputCanvas");
-  if (!canvas) return;
-  animate("output", canvas, 560 / 940, (ctx, w, h, t) => {
-    drawGrid(ctx, w, h);
-    const labels = ["不会", "会", "毒死", "因为", "毒蛇"];
-    const probs = [0.34, 0.11, 0.20, 0.18, 0.17];
-    text(ctx, "Vocabulary distribution for next token", w / 2, 42, 23, colors.cyan, 950);
-    labels.forEach((label, i) => {
-      const y = 70 + i * 50;
-      roundRect(ctx, 160, y, 600, 36, 6, "rgba(255,255,255,0.035)", "rgba(102,240,255,0.16)");
-      const glow = 0.85 + Math.sin(t * 2 + i) * 0.15;
-      ctx.fillStyle = i === 0 ? colors.green : colors.cyan;
-      ctx.globalAlpha = 0.25 + probs[i] * glow;
-      ctx.fillRect(160, y, 600 * probs[i] * 1.9, 36);
-      ctx.globalAlpha = 1;
-      text(ctx, label, 188, y + 18, 17, colors.text, 900, "left");
-      text(ctx, `${Math.round(probs[i] * 100)}%`, 790, y + 18, 17, i === 0 ? colors.green : colors.text, 900, "right");
-    });
-    text(ctx, "argmax → 不会", w / 2, h - 34, 20, colors.green, 950);
+function drawEncoder(ctx, w, h, time) {
+  bg(ctx, w, h);
+  const blocks = ["Multi-Head Attention", "Add + LayerNorm", "Feed Forward", "Add + LayerNorm"];
+  blocks.forEach((label, i) => {
+    const y = 86 + i * 95;
+    box(ctx, w / 2 - 210, y, 420, 62, "#101010", i === Math.floor(time % 4) ? C.accent : C.line);
+    t(ctx, label, w / 2, y + 31, 20, C.text, 700);
+    if (i < blocks.length - 1) arrow(ctx, w / 2, y + 62, w / 2, y + 92, "#777");
   });
+  t(ctx, "一个 Encoder Block：交换信息，再稳定和加工", w / 2, h - 46, 22, C.text, 700);
+}
+
+function drawGenerate(ctx, w, h, time) {
+  bg(ctx, w, h);
+  const seqs = ["<BOS>", "<BOS> 不会", "<BOS> 不会 被", "<BOS> 不会 被 毒死"];
+  const idx = Math.floor(time * 0.8) % seqs.length;
+  seqs.forEach((seq, i) => {
+    const y = 100 + i * 82;
+    box(ctx, 120, y, 660, 54, "#101010", i === idx ? C.accent : C.line);
+    t(ctx, seq, 150, y + 27, 18, C.text, 650, "left");
+  });
+  t(ctx, "每一步把新 token 接回序列，再预测下一个", w / 2, h - 54, 22, C.text, 700);
+}
+
+function drawMask(ctx, w, h, time) {
+  bg(ctx, w, h);
+  const n = 6, cell = 52, x0 = w / 2 - (n * cell) / 2, y0 = 100;
+  const row = Math.floor(time % n);
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      const future = c > r;
+      ctx.fillStyle = future ? "rgba(255,255,255,0.08)" : "rgba(10,132,255,0.24)";
+      ctx.fillRect(x0 + c * cell, y0 + r * cell, cell - 4, cell - 4);
+      ctx.strokeStyle = r === row ? C.accent : C.line;
+      ctx.strokeRect(x0 + c * cell, y0 + r * cell, cell - 4, cell - 4);
+      t(ctx, future ? "−∞" : "ok", x0 + c * cell + cell / 2, y0 + r * cell + cell / 2, 15, future ? C.dim : C.text, 650);
+    }
+  }
+  t(ctx, "未来位置设为 −∞，softmax 后权重为 0", w / 2, h - 50, 22, C.text, 700);
+}
+
+function drawCross(ctx, w, h, time) {
+  bg(ctx, w, h);
+  const left = ["用", "毒", "毒蛇", "毒死"];
+  const right = ["<BOS>", "毒蛇", "不会"];
+  left.forEach((word, i) => {
+    box(ctx, 110, 100 + i * 84, 210, 52, "#101010", C.line);
+    t(ctx, word, 215, 126 + i * 84, 18, C.text, 700);
+  });
+  right.forEach((word, i) => {
+    box(ctx, 610, 140 + i * 95, 210, 58, "#101010", C.line);
+    t(ctx, word, 715, 169 + i * 95, 18, C.text, 700);
+  });
+  left.forEach((_, i) => right.forEach((__, j) => {
+    ctx.strokeStyle = (i + j + Math.floor(time)) % 3 === 0 ? C.accent : "#444";
+    ctx.lineWidth = (i + j + Math.floor(time)) % 3 === 0 ? 2.4 : 1;
+    ctx.beginPath();
+    ctx.moveTo(610, 169 + j * 95);
+    ctx.bezierCurveTo(500, 169 + j * 95, 430, 126 + i * 84, 320, 126 + i * 84);
+    ctx.stroke();
+  }));
+  t(ctx, "Decoder 查询 Encoder 的记忆", w / 2, 48, 22, C.text, 700);
+}
+
+function drawOutput(ctx, w, h, time) {
+  bg(ctx, w, h);
+  const labels = ["不会", "会", "毒死", "因为", "毒蛇"];
+  const probs = [0.34, 0.11, 0.20, 0.18, 0.17];
+  labels.forEach((label, i) => {
+    const y = 88 + i * 66;
+    box(ctx, 160, y, 590, 38, "#101010", C.line);
+    ctx.fillStyle = i === 0 ? C.accent : "#f5f5f7";
+    ctx.globalAlpha = i === 0 ? 0.85 : 0.25;
+    ctx.fillRect(160, y, 590 * probs[i] * 1.8, 38);
+    ctx.globalAlpha = 1;
+    t(ctx, label, 188, y + 19, 17, C.text, 700, "left");
+    t(ctx, `${Math.round(probs[i] * 100)}%`, 780, y + 19, 17, C.muted, 650, "right");
+  });
+  t(ctx, "argmax → 不会", w / 2, h - 52, 24, C.accent, 760);
 }
 
 showSlide(0);
