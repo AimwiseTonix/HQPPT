@@ -6,35 +6,51 @@ const fullBtn = document.querySelector("#fullBtn");
 const slideNo = document.querySelector("#slideNo");
 const progressBar = document.querySelector("#progressBar");
 
-const state = { index: 0, timers: new Map() };
+const state = { index: 0, raf: null };
 const C = {
-  bg: "#050505",
-  panel: "#101012",
-  line: "#303034",
+  bg: "#050506",
+  panel: "#101014",
+  panel2: "#151519",
+  line: "rgba(255,255,255,0.14)",
+  lineSoft: "rgba(255,255,255,0.07)",
   text: "#f5f5f7",
   muted: "#a1a1a6",
   dim: "#6e6e73",
   accent: "#0a84ff",
-  accentSoft: "rgba(10,132,255,0.22)",
 };
 
-function clearTimer(key) {
-  const id = state.timers.get(key);
-  if (id) {
-    cancelAnimationFrame(id);
-    clearTimeout(id);
-  }
-  state.timers.delete(key);
-}
+const sceneMap = {
+  cover: ["#coverCanvas", drawCover],
+  llmMap: ["#llmMapCanvas", drawLlmMap],
+  problem: ["#problemCanvas", drawProblem],
+  sentence: ["#sentenceCanvas", drawSentence],
+  roles: ["#rolesCanvas", drawRoles],
+  embedding: ["#embeddingCanvas", drawEmbedding],
+  vectorSpace: ["#vectorSpaceCanvas", drawVectorSpace],
+  position: ["#positionCanvas", drawPosition],
+  positionFormula: ["#positionFormulaCanvas", drawPositionFormula],
+  qkv: ["#qkvCanvas", drawQkv],
+  queryKeyValue: ["#qkvRolesCanvas", drawQkvRoles],
+  library: ["#libraryCanvas", drawLibrary],
+  score: ["#scoreCanvas", drawScore],
+  scoreMatrix: ["#scoreMatrixCanvas", drawScoreMatrix],
+  scale: ["#scaleCanvas", drawScale],
+  softmax: ["#softmaxCanvas", drawSoftmax],
+  weighted: ["#weightedCanvas", drawWeighted],
+  attentionFormula: ["#attentionFormulaCanvas", drawAttentionFormula],
+  llmWhy: ["#llmWhyCanvas", drawLlmWhy],
+  summary: ["#summaryCanvas", drawSummary],
+};
 
-function clearAllTimers() {
-  for (const key of Array.from(state.timers.keys())) clearTimer(key);
+function stopAnimation() {
+  if (state.raf) cancelAnimationFrame(state.raf);
+  state.raf = null;
 }
 
 function showSlide(index) {
   const next = Math.max(0, Math.min(slides.length - 1, index));
   state.index = next;
-  clearAllTimers();
+  stopAnimation();
   slides.forEach((slide, i) => {
     slide.classList.toggle("active", i === next);
     slide.classList.remove("enter");
@@ -47,7 +63,7 @@ function showSlide(index) {
 }
 
 function replay() {
-  clearAllTimers();
+  stopAnimation();
   const active = slides[state.index];
   active.classList.remove("enter");
   void active.offsetWidth;
@@ -72,24 +88,21 @@ document.addEventListener("keydown", (event) => {
 function runScene(scene, reset = false) {
   if (scene === "tokens") buildTokenLab(reset);
   if (scene === "ids") buildIds(reset);
-  if (scene === "cover") drawLoop("cover", "#coverCanvas", drawCover);
-  if (scene === "relation") drawLoop("relation", "#relationCanvas", drawRelation);
-  if (scene === "embedding") drawLoop("embedding", "#embeddingCanvas", drawEmbedding);
-  if (scene === "position") drawLoop("position", "#positionCanvas", drawPosition);
-  if (scene === "qkvIntro") drawLoop("qkv", "#qkvCanvas", drawQkv);
-  if (scene === "library1") drawLoop("library", "#libraryCanvas", drawLibrary);
-  if (scene === "score") drawLoop("score", "#scoreCanvas", drawScore);
-  if (scene === "softmax") drawLoop("softmax", "#softmaxCanvas", drawSoftmax);
-  if (scene === "matrix") drawLoop("matrix", "#matrixCanvas", drawMatrix);
-  if (scene === "multiHeadWhy") drawLoop("heads", "#headsCanvas", drawHeads);
-  if (scene === "encoderBlock") drawLoop("encoder", "#encoderCanvas", drawEncoder);
-  if (scene === "autoregressive") drawLoop("generate", "#generateCanvas", drawGenerate);
-  if (scene === "maskedAttention") drawLoop("mask", "#maskCanvas", drawMask);
-  if (scene === "crossAttention") drawLoop("cross", "#crossCanvas", drawCross);
-  if (scene === "prob") drawLoop("output", "#outputCanvas", drawOutput);
+  const config = sceneMap[scene];
+  if (!config) return;
+  const [selector, draw] = config;
+  const canvas = document.querySelector(selector);
+  if (!canvas) return;
+  const start = performance.now();
+  const loop = (now) => {
+    const { ctx, w, h } = setup(canvas);
+    draw(ctx, w, h, (now - start) / 1000);
+    state.raf = requestAnimationFrame(loop);
+  };
+  loop(start);
 }
 
-function setup(canvas, aspect = 560 / 900) {
+function setup(canvas, aspect = 620 / 900) {
   const ctx = canvas.getContext("2d");
   const rect = canvas.getBoundingClientRect();
   const ratio = window.devicePixelRatio || 1;
@@ -101,31 +114,18 @@ function setup(canvas, aspect = 560 / 900) {
   return { ctx, w, h };
 }
 
-function drawLoop(key, selector, draw) {
-  const canvas = document.querySelector(selector);
-  if (!canvas) return;
-  const start = performance.now();
-  const loop = (now) => {
-    const s = setup(canvas);
-    draw(s.ctx, s.w, s.h, (now - start) / 1000);
-    const id = requestAnimationFrame(loop);
-    state.timers.set(key, id);
-  };
-  loop(start);
-}
-
 function bg(ctx, w, h) {
   ctx.fillStyle = C.bg;
   ctx.fillRect(0, 0, w, h);
-  ctx.strokeStyle = "rgba(255,255,255,0.045)";
+  ctx.strokeStyle = "rgba(255,255,255,0.035)";
   ctx.lineWidth = 1;
-  for (let x = 0; x < w; x += 42) {
+  for (let x = 0; x <= w; x += 44) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, h);
     ctx.stroke();
   }
-  for (let y = 0; y < h; y += 42) {
+  for (let y = 0; y <= h; y += 44) {
     ctx.beginPath();
     ctx.moveTo(0, y);
     ctx.lineTo(w, y);
@@ -133,7 +133,7 @@ function bg(ctx, w, h) {
   }
 }
 
-function t(ctx, s, x, y, size = 18, color = C.text, weight = 650, align = "center") {
+function text(ctx, s, x, y, size = 18, color = C.text, weight = 650, align = "center") {
   ctx.fillStyle = color;
   ctx.font = `${weight} ${size}px -apple-system, BlinkMacSystemFont, PingFang SC, Arial`;
   ctx.textAlign = align;
@@ -141,19 +141,20 @@ function t(ctx, s, x, y, size = 18, color = C.text, weight = 650, align = "cente
   ctx.fillText(s, x, y);
 }
 
-function box(ctx, x, y, w, h, fill = C.panel, stroke = C.line) {
-  ctx.fillStyle = fill;
-  ctx.strokeStyle = stroke;
-  ctx.lineWidth = 1;
+function box(ctx, x, y, w, h, label = "", opt = {}) {
+  ctx.fillStyle = opt.fill || C.panel;
+  ctx.strokeStyle = opt.stroke || C.line;
+  ctx.lineWidth = opt.lineWidth || 1;
   ctx.beginPath();
-  ctx.roundRect(x, y, w, h, 10);
+  ctx.roundRect(x, y, w, h, opt.radius || 16);
   ctx.fill();
   ctx.stroke();
+  if (label) text(ctx, label, x + w / 2, y + h / 2, opt.size || 18, opt.color || C.text, opt.weight || 700);
 }
 
-function arrow(ctx, x1, y1, x2, y2, color = C.accent) {
+function arrow(ctx, x1, y1, x2, y2, color = C.accent, width = 2) {
   ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = width;
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);
@@ -161,327 +162,373 @@ function arrow(ctx, x1, y1, x2, y2, color = C.accent) {
   const a = Math.atan2(y2 - y1, x2 - x1);
   ctx.beginPath();
   ctx.moveTo(x2, y2);
-  ctx.lineTo(x2 - 10 * Math.cos(a - 0.45), y2 - 10 * Math.sin(a - 0.45));
-  ctx.lineTo(x2 - 10 * Math.cos(a + 0.45), y2 - 10 * Math.sin(a + 0.45));
+  ctx.lineTo(x2 - 12 * Math.cos(a - 0.46), y2 - 12 * Math.sin(a - 0.46));
+  ctx.lineTo(x2 - 12 * Math.cos(a + 0.46), y2 - 12 * Math.sin(a + 0.46));
   ctx.closePath();
   ctx.fillStyle = color;
   ctx.fill();
 }
 
+function pulse(t, shift = 0) {
+  return 0.5 + 0.5 * Math.sin(t * 2 + shift);
+}
+
 function buildTokenLab(reset) {
-  const tokens = ["用", "毒", "毒", "毒蛇", "，", "毒蛇", "会不会", "被", "毒", "毒死", "？"];
   const row = document.querySelector(".token-stream");
   if (!row) return;
   if (!reset && row.children.length) return;
+  const tokens = ["用", "毒", "毒", "毒蛇", "，", "毒蛇", "会不会", "被", "毒", "毒死", "？"];
   row.innerHTML = "";
   tokens.forEach((token, i) => {
     const el = document.createElement("span");
     el.textContent = token;
-    el.style.animationDelay = `${i * 36}ms`;
+    el.style.animationDelay = `${i * 46}ms`;
     row.appendChild(el);
   });
 }
 
 function buildIds(reset) {
+  const row = document.querySelector(".id-stream");
+  if (!row) return;
+  if (!reset && row.children.length) return;
   const ids = ["910", "4812", "4812", "33016", "11", "33016", "7642", "928", "4812", "44802", "30"];
-  const boxEl = document.querySelector(".id-lab");
-  if (!boxEl) return;
-  if (!reset && boxEl.children.length) return;
-  boxEl.innerHTML = "";
+  row.innerHTML = "";
   ids.forEach((id, i) => {
     const el = document.createElement("span");
     el.textContent = id;
-    el.style.animationDelay = `${i * 34}ms`;
-    boxEl.appendChild(el);
+    el.style.animationDelay = `${i * 46}ms`;
+    row.appendChild(el);
   });
 }
 
-function drawCover(ctx, w, h, time) {
+function drawCover(ctx, w, h, t) {
   bg(ctx, w, h);
   const cx = w / 2, cy = h / 2;
-  const words = ["Token", "Embedding", "Q", "K", "V", "Attention", "Encoder", "Decoder"];
-  words.forEach((word, i) => {
-    const a = time * 0.35 + (Math.PI * 2 * i) / words.length;
-    const r = 140 + (i % 2) * 70;
+  const nodes = ["Token", "Embedding", "Position", "Q", "K", "V", "Softmax", "Context"];
+  nodes.forEach((n, i) => {
+    const a = t * 0.28 + (Math.PI * 2 * i) / nodes.length;
+    const r = 180 + (i % 2) * 62;
     const x = cx + Math.cos(a) * r;
     const y = cy + Math.sin(a) * r;
-    box(ctx, x - 70, y - 23, 140, 46, "#0d0d0f", i % 2 ? C.line : C.accent);
-    t(ctx, word, x, y, 16, i % 2 ? C.text : C.accent, 700);
-    ctx.strokeStyle = "rgba(10,132,255,0.20)";
+    ctx.strokeStyle = "rgba(10,132,255,0.22)";
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.lineTo(x, y);
     ctx.stroke();
+    box(ctx, x - 68, y - 24, 136, 48, n, { stroke: i % 2 ? C.line : C.accent, size: 15 });
   });
-  box(ctx, cx - 120, cy - 48, 240, 96, "#050505", C.accent);
-  t(ctx, "Transformer", cx, cy - 8, 26, C.text, 760);
-  t(ctx, "relationship engine", cx, cy + 24, 14, C.muted, 600);
+  box(ctx, cx - 128, cy - 58, 256, 116, "Transformer", { stroke: C.accent, size: 25, weight: 780 });
+  text(ctx, "context engine", cx, cy + 30, 15, C.muted, 620);
 }
 
-function drawRelation(ctx, w, h, time) {
+function drawLlmMap(ctx, w, h, t) {
+  bg(ctx, w, h);
+  const labels = ["上下文", "Token", "向量", "注意力", "概率", "下一个 token"];
+  const y = h / 2;
+  labels.forEach((label, i) => {
+    const x = 64 + i * ((w - 128) / (labels.length - 1));
+    box(ctx, x - 52, y - 42, 104, 84, label, { stroke: i === Math.floor(t % labels.length) ? C.accent : C.line, size: 16 });
+    if (i < labels.length - 1) arrow(ctx, x + 54, y, x + ((w - 128) / (labels.length - 1)) - 58, y, "rgba(10,132,255,0.8)", 2);
+  });
+  text(ctx, "P(next token | context)", w / 2, h - 82, 26, C.text, 760);
+}
+
+function drawProblem(ctx, w, h, t) {
   bg(ctx, w, h);
   const words = ["用", "毒", "毒", "毒蛇", "毒蛇", "被", "毒", "毒死"];
-  const xs = words.map((_, i) => 80 + i * ((w - 160) / (words.length - 1)));
-  const y = 120;
-  words.forEach((word, i) => {
-    box(ctx, xs[i] - 30, y - 24, 60, 48, "#101010", C.line);
-    t(ctx, word, xs[i], y, 18, C.text, 700);
-  });
-  const arcs = [[1, 3], [3, 7], [5, 7], [0, 1]];
-  arcs.forEach(([a, b], i) => {
-    ctx.strokeStyle = i === Math.floor(time % arcs.length) ? C.accent : "#555";
-    ctx.lineWidth = i === Math.floor(time % arcs.length) ? 3 : 1.5;
+  const xs = words.map((_, i) => 70 + i * ((w - 140) / (words.length - 1)));
+  const y = h * 0.32;
+  words.forEach((word, i) => box(ctx, xs[i] - 30, y - 24, 60, 48, word, { stroke: i === Math.floor(t % words.length) ? C.accent : C.line }));
+  [[0, 1], [1, 3], [3, 7], [5, 7], [6, 7]].forEach(([a, b], i) => {
+    const active = i === Math.floor(t % 5);
+    ctx.strokeStyle = active ? C.accent : "rgba(255,255,255,0.24)";
+    ctx.lineWidth = active ? 3 : 1.4;
     ctx.beginPath();
-    const mid = (xs[a] + xs[b]) / 2;
-    ctx.moveTo(xs[a], y + 28);
-    ctx.quadraticCurveTo(mid, y + 120 + i * 22, xs[b], y + 28);
+    ctx.moveTo(xs[a], y + 34);
+    ctx.quadraticCurveTo((xs[a] + xs[b]) / 2, y + 132 + i * 14, xs[b], y + 34);
     ctx.stroke();
   });
-  t(ctx, "语义来自关系，而不是孤立文字", w / 2, h - 70, 24, C.text, 700);
+  text(ctx, "语义 = token 之间的关系网络", w / 2, h - 78, 26, C.text, 760);
 }
 
-function drawEmbedding(ctx, w, h, time) {
+function drawSentence(ctx, w, h, t) {
+  bg(ctx, w, h);
+  const parts = [["用", "动作入口"], ["毒", "手段"], ["毒蛇", "实体"], ["被", "被动关系"], ["毒", "施加因素"], ["毒死", "结果"]];
+  parts.forEach(([word, role], i) => {
+    const x = 105 + (i % 3) * 255;
+    const y = 118 + Math.floor(i / 3) * 178;
+    box(ctx, x, y, 180, 104, "", { stroke: i === Math.floor(t % parts.length) ? C.accent : C.line });
+    text(ctx, word, x + 90, y + 38, 30, C.text, 780);
+    text(ctx, role, x + 90, y + 74, 17, C.muted, 650);
+  });
+  text(ctx, "同形字符，角色不同", w / 2, h - 62, 25, C.text, 760);
+}
+
+function drawRoles(ctx, w, h, t) {
+  bg(ctx, w, h);
+  const cx = w / 2, cy = h / 2;
+  box(ctx, cx - 78, cy - 42, 156, 84, "毒", { stroke: C.accent, size: 42 });
+  const roles = [["名词", 0], ["动词", 1], ["形容词", 2], ["结果词组", 3], ["实体修饰", 4]];
+  roles.forEach(([r, i]) => {
+    const a = t * 0.2 + (Math.PI * 2 * i) / roles.length;
+    const x = cx + Math.cos(a) * 245;
+    const y = cy + Math.sin(a) * 170;
+    arrow(ctx, cx + Math.cos(a) * 86, cy + Math.sin(a) * 48, x - Math.cos(a) * 58, y - Math.sin(a) * 28, i === Math.floor(t % roles.length) ? C.accent : "rgba(255,255,255,0.28)", 1.8);
+    box(ctx, x - 72, y - 30, 144, 60, r, { stroke: i === Math.floor(t % roles.length) ? C.accent : C.line, size: 18 });
+  });
+}
+
+function drawEmbedding(ctx, w, h, t) {
   bg(ctx, w, h);
   const tokens = ["毒", "毒蛇", "毒死"];
   tokens.forEach((token, i) => {
-    const y = 120 + i * 130;
-    box(ctx, 70, y - 34, 130, 68, "#101010", C.line);
-    t(ctx, token, 135, y, 22, C.text, 700);
-    arrow(ctx, 220, y, 310, y);
-    for (let j = 0; j < 12; j++) {
-      const x = 330 + j * 38;
-      const v = Math.abs(Math.sin(time + i * 1.3 + j * 0.7));
-      box(ctx, x, y - 30, 24, 60, "#0b0b0c", "#242426");
-      ctx.fillStyle = j % 3 === 0 ? C.accent : "#f5f5f7";
-      ctx.globalAlpha = 0.25 + v * 0.55;
-      ctx.fillRect(x + 5, y + 22, 14, -v * 44);
+    const y = 118 + i * 148;
+    box(ctx, 58, y - 34, 116, 68, token, { stroke: C.line, size: 23 });
+    arrow(ctx, 186, y, 280, y);
+    for (let j = 0; j < 14; j++) {
+      const x = 304 + j * 36;
+      const v = Math.abs(Math.sin(t + i * 1.2 + j * 0.55));
+      box(ctx, x, y - 32, 24, 64, "", { radius: 8, stroke: C.lineSoft, fill: "#0c0c0f" });
+      ctx.fillStyle = j % 4 === 0 ? C.accent : C.text;
+      ctx.globalAlpha = 0.22 + v * 0.58;
+      ctx.fillRect(x + 6, y + 25, 12, -v * 50);
       ctx.globalAlpha = 1;
     }
   });
-  t(ctx, "每个 token 查表得到一个高维向量", w / 2, 42, 22, C.text, 700);
+  text(ctx, "ID 查表 → 高维向量", w / 2, 44, 24, C.text, 760);
 }
 
-function drawPosition(ctx, w, h, time) {
+function drawVectorSpace(ctx, w, h, t) {
   bg(ctx, w, h);
-  const left = 70, right = w - 70, top = 120, bottom = h - 115;
-  [[1, C.accent], [2, C.text], [4, C.dim]].forEach(([freq, color], wi) => {
+  const pts = [
+    ["毒蛇", 0.38, 0.38], ["蛇类", 0.44, 0.45], ["动物", 0.50, 0.32],
+    ["毒死", 0.66, 0.58], ["中毒", 0.70, 0.48], ["用毒", 0.58, 0.70],
+  ];
+  ctx.strokeStyle = "rgba(255,255,255,0.18)";
+  ctx.beginPath();
+  ctx.moveTo(105, h - 105);
+  ctx.lineTo(w - 105, h - 105);
+  ctx.moveTo(105, h - 105);
+  ctx.lineTo(105, 82);
+  ctx.stroke();
+  pts.forEach(([label, px, py], i) => {
+    const x = 105 + px * (w - 210);
+    const y = 82 + py * (h - 190);
+    const r = 7 + pulse(t, i) * 4;
+    ctx.fillStyle = i === Math.floor(t % pts.length) ? C.accent : C.text;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    text(ctx, label, x + 14, y - 14, 16, C.muted, 650, "left");
+  });
+  text(ctx, "距离和方向编码用法相似性", w / 2, h - 54, 24, C.text, 760);
+}
+
+function drawPosition(ctx, w, h, t) {
+  bg(ctx, w, h);
+  const tokens = ["用", "毒", "毒蛇", "被", "毒死"];
+  tokens.forEach((token, i) => {
+    const x = 92 + i * ((w - 184) / (tokens.length - 1));
+    box(ctx, x - 48, 110, 96, 58, token, { stroke: C.line, size: 19 });
+    box(ctx, x - 48, 240, 96, 58, `pos ${i}`, { stroke: i === Math.floor(t % tokens.length) ? C.accent : C.line, size: 17, color: C.accent });
+    arrow(ctx, x, 172, x, 236, "rgba(10,132,255,0.8)");
+  });
+  text(ctx, "token 向量 + 位置向量 = 有顺序的输入", w / 2, h - 78, 24, C.text, 760);
+}
+
+function drawPositionFormula(ctx, w, h, t) {
+  bg(ctx, w, h);
+  const left = 70, right = w - 70, top = 96, bottom = h - 122;
+  [[1, C.accent], [2, C.text], [4, C.dim], [8, "rgba(255,255,255,0.32)"]].forEach(([freq, color], i) => {
     ctx.strokeStyle = color;
-    ctx.lineWidth = wi === 0 ? 3 : 1.8;
+    ctx.lineWidth = i === 0 ? 3 : 1.7;
     ctx.beginPath();
     for (let x = left; x <= right; x += 3) {
       const p = (x - left) / (right - left);
-      const y = top + (bottom - top) * (0.5 + Math.sin(p * Math.PI * 2 * freq + time + wi) * 0.23);
+      const y = top + (bottom - top) * (0.5 + Math.sin(p * Math.PI * 2 * freq + t * 0.8 + i) * 0.22);
       if (x === left) ctx.moveTo(x, y);
       else ctx.lineTo(x, y);
     }
     ctx.stroke();
   });
-  for (let i = 0; i < 8; i++) {
-    const x = left + ((right - left) / 7) * i;
-    box(ctx, x - 24, bottom + 40, 48, 34, "#101010", C.line);
-    t(ctx, String(i), x, bottom + 57, 16, C.text, 700);
-  }
-  t(ctx, "位置编码：给同时输入的 token 加上顺序指纹", w / 2, 44, 22, C.text, 700);
+  text(ctx, "多频率曲线叠加，给位置生成指纹", w / 2, h - 60, 24, C.text, 760);
 }
 
-function drawQkv(ctx, w, h, time) {
+function drawQkv(ctx, w, h, t) {
   bg(ctx, w, h);
-  const cx = 125, cy = h / 2;
-  box(ctx, cx - 58, cy - 44, 116, 88, "#101010", C.accent);
-  t(ctx, "X", cx, cy, 34, C.text, 760);
-  [["Q", "我想找什么", 360, 115], ["K", "我能匹配谁", 525, 280], ["V", "我贡献什么", 690, 445]].forEach(([name, desc, x, y], i) => {
-    arrow(ctx, cx + 66, cy, x - 82, y, i === 0 ? C.accent : "#777");
-    box(ctx, x - 78, y - 42, 156, 84, "#101010", i === 0 ? C.accent : C.line);
-    t(ctx, name, x, y - 10, 30, i === 0 ? C.accent : C.text, 760);
-    t(ctx, desc, x, y + 24, 15, C.muted, 600);
+  const cx = 120, cy = h / 2;
+  box(ctx, cx - 52, cy - 52, 104, 104, "X", { stroke: C.accent, size: 34 });
+  [["Q", "想找什么", 390, 122], ["K", "如何被找", 548, h / 2], ["V", "贡献内容", 708, h - 176]].forEach(([name, desc, x, y], i) => {
+    arrow(ctx, cx + 62, cy, x - 86, y, i === Math.floor(t % 3) ? C.accent : "rgba(255,255,255,0.34)", 2);
+    box(ctx, x - 76, y - 44, 152, 88, "", { stroke: i === Math.floor(t % 3) ? C.accent : C.line });
+    text(ctx, name, x, y - 12, 34, i === Math.floor(t % 3) ? C.accent : C.text, 780);
+    text(ctx, desc, x, y + 25, 16, C.muted, 650);
   });
 }
 
-function drawLibrary(ctx, w, h, time) {
+function drawQkvRoles(ctx, w, h, t) {
   bg(ctx, w, h);
-  box(ctx, 56, h / 2 - 44, 150, 88, "#101010", C.accent);
-  t(ctx, "你的 Q", 131, h / 2 - 8, 22, C.text, 720);
-  t(ctx, "问题", 131, h / 2 + 24, 15, C.muted, 600);
-  const books = [["书 A", 0.22], ["书 B", 0.76], ["书 C", 0.42], ["书 D", 0.58]];
+  const rows = [["Q", "搜索请求", "我现在需要什么？"], ["K", "索引标签", "我适合回答什么？"], ["V", "正文内容", "我真正贡献什么？"]];
+  rows.forEach(([a, b, c], i) => {
+    const y = 110 + i * 132;
+    box(ctx, 76, y, 90, 74, a, { stroke: i === Math.floor(t % 3) ? C.accent : C.line, size: 32, color: i === Math.floor(t % 3) ? C.accent : C.text });
+    box(ctx, 206, y, 190, 74, b, { stroke: C.line, size: 22 });
+    box(ctx, 438, y, 330, 74, c, { stroke: C.line, size: 20, color: C.muted });
+    arrow(ctx, 168, y + 37, 202, y + 37, "rgba(10,132,255,0.75)");
+    arrow(ctx, 398, y + 37, 434, y + 37, "rgba(10,132,255,0.75)");
+  });
+}
+
+function drawLibrary(ctx, w, h, t) {
+  bg(ctx, w, h);
+  box(ctx, 54, h / 2 - 46, 142, 92, "Q 问题", { stroke: C.accent, size: 22 });
+  const books = [["书 A", 0.18], ["书 B", 0.74], ["书 C", 0.40], ["书 D", 0.56], ["书 E", 0.28]];
   books.forEach(([name, score], i) => {
-    const x = 350 + i * 118;
-    const y = h / 2 - 72;
-    box(ctx, x, y, 78, 144, "#101010", score > 0.6 ? C.accent : C.line);
-    t(ctx, name, x + 39, y + 34, 18, C.text, 700);
-    t(ctx, "K", x + 39, y + 72, 18, C.accent, 720);
-    t(ctx, "V", x + 39, y + 108, 18, C.muted, 720);
-    ctx.strokeStyle = score > 0.6 ? C.accent : "#555";
-    ctx.lineWidth = 1 + score * 3;
+    const x = 304 + i * 98;
+    const y = h / 2 - 98;
+    const active = score > 0.55 || i === Math.floor(t % books.length);
+    box(ctx, x, y, 70, 196, "", { stroke: active ? C.accent : C.line, radius: 10 });
+    text(ctx, name, x + 35, y + 42, 17, C.text, 720);
+    text(ctx, "K", x + 35, y + 92, 20, C.accent, 760);
+    text(ctx, "V", x + 35, y + 142, 20, C.muted, 760);
+    ctx.strokeStyle = active ? C.accent : "rgba(255,255,255,0.22)";
+    ctx.lineWidth = 1 + score * 4;
     ctx.beginPath();
-    ctx.moveTo(210, h / 2);
-    ctx.lineTo(x, y + 72);
+    ctx.moveTo(198, h / 2);
+    ctx.lineTo(x, y + 92);
     ctx.stroke();
   });
-  t(ctx, "Q 匹配书脊标签 K，再按匹配度阅读内容 V", w / 2, h - 54, 22, C.text, 700);
+  text(ctx, "匹配 K，读取 V，形成整合理解", w / 2, h - 54, 24, C.text, 760);
 }
 
-function drawScore(ctx, w, h, time) {
+function drawScore(ctx, w, h, t) {
+  bg(ctx, w, h);
+  const row = Math.floor(t % 5);
+  const words = ["用", "毒", "毒蛇", "被", "毒死"];
+  words.forEach((word, i) => {
+    const y = 108 + i * 78;
+    box(ctx, 80, y, 94, 50, word, { stroke: i === row ? C.accent : C.line, size: 18 });
+    box(ctx, w - 174, y, 94, 50, word, { stroke: C.line, size: 18 });
+    const active = i === row || i === (row + 2) % 5;
+    ctx.strokeStyle = active ? C.accent : "rgba(255,255,255,0.22)";
+    ctx.lineWidth = active ? 3 : 1.2;
+    ctx.beginPath();
+    ctx.moveTo(178, 133 + row * 78);
+    ctx.bezierCurveTo(320, 133 + row * 78, 510, 133 + i * 78, w - 178, 133 + i * 78);
+    ctx.stroke();
+  });
+  text(ctx, "qᵢ · kⱼ", w / 2, h / 2, 42, C.text, 780);
+}
+
+function drawScoreMatrix(ctx, w, h, t) {
   bg(ctx, w, h);
   const words = ["用", "毒", "毒蛇", "被", "毒死"];
-  const row = Math.floor(time % words.length);
+  const vals = [
+    [0.12, 0.80, 0.36, 0.10, 0.16],
+    [0.09, 0.28, 0.62, 0.18, 0.42],
+    [0.08, 0.24, 0.76, 0.24, 0.48],
+    [0.06, 0.18, 0.32, 0.26, 0.72],
+    [0.05, 0.24, 0.36, 0.30, 0.66],
+  ];
+  const cell = Math.min(76, (w - 260) / 5);
+  const x0 = w / 2 - (cell * 5) / 2;
+  const y0 = 114;
+  const row = Math.floor(t % 5);
   words.forEach((word, i) => {
-    box(ctx, 90, 100 + i * 72, 90, 46, "#101010", i === row ? C.accent : C.line);
-    t(ctx, word, 135, 123 + i * 72, 17, C.text, 700);
-    box(ctx, 650, 100 + i * 72, 90, 46, "#101010", C.line);
-    t(ctx, word, 695, 123 + i * 72, 17, C.text, 700);
+    text(ctx, word, x0 - 18, y0 + i * cell + cell / 2, 14, C.muted, 650, "right");
+    text(ctx, word, x0 + i * cell + cell / 2, y0 - 22, 14, C.muted, 650);
   });
-  t(ctx, "Q", 135, 62, 18, C.accent, 760);
-  t(ctx, "K", 695, 62, 18, C.accent, 760);
-  words.forEach((_, i) => {
-    const y1 = 123 + row * 72;
-    const y2 = 123 + i * 72;
-    ctx.strokeStyle = i === row ? C.accent : "#555";
-    ctx.lineWidth = i === row ? 3 : 1.3;
-    ctx.beginPath();
-    ctx.moveTo(185, y1);
-    ctx.bezierCurveTo(320, y1, 480, y2, 645, y2);
-    ctx.stroke();
-  });
-  t(ctx, "每个 Query 会和所有 Key 做相似度打分", w / 2, h - 52, 22, C.text, 700);
+  for (let r = 0; r < 5; r++) {
+    for (let c = 0; c < 5; c++) {
+      const v = vals[r][c];
+      ctx.fillStyle = r === row ? `rgba(10,132,255,${0.18 + v * 0.52})` : `rgba(255,255,255,${0.035 + v * 0.22})`;
+      ctx.fillRect(x0 + c * cell, y0 + r * cell, cell - 5, cell - 5);
+      text(ctx, v.toFixed(2), x0 + c * cell + cell / 2, y0 + r * cell + cell / 2, 13, C.text, 650);
+    }
+  }
+  text(ctx, "第 i 行 = 第 i 个 token 看全句", w / 2, h - 58, 23, C.text, 760);
 }
 
-function drawSoftmax(ctx, w, h, time) {
+function drawScale(ctx, w, h, t) {
+  bg(ctx, w, h);
+  const before = [2.1, 5.8, 7.4, 1.6, 4.2];
+  const after = before.map((v) => v / Math.sqrt(64));
+  drawBars(ctx, 120, 122, before, "未缩放：分数过尖", t);
+  drawBars(ctx, 120, 352, after, "缩放后：更稳定", t, 8);
+}
+
+function drawBars(ctx, x, y, values, label, t, scale = 1) {
+  text(ctx, label, x, y - 34, 18, C.muted, 650, "left");
+  values.forEach((v, i) => {
+    const ww = v * 46 * scale;
+    box(ctx, x, y + i * 30, 500, 18, "", { stroke: C.lineSoft, fill: "rgba(255,255,255,0.035)", radius: 6 });
+    ctx.fillStyle = i === Math.floor(t % values.length) ? C.accent : "rgba(255,255,255,0.45)";
+    ctx.fillRect(x, y + i * 30, Math.min(500, ww), 18);
+  });
+}
+
+function drawSoftmax(ctx, w, h, t) {
   bg(ctx, w, h);
   const labels = ["毒", "毒蛇", "被", "毒死"];
   const vals = [0.18, 0.44, 0.14, 0.24];
   labels.forEach((label, i) => {
-    const x = 160 + i * 160;
-    const height = vals[i] * 520;
-    box(ctx, x, h - 120 - height, 80, height, "#101010", C.line);
-    ctx.fillStyle = i === 1 ? C.accent : "#f5f5f7";
-    ctx.globalAlpha = i === 1 ? 0.9 : 0.38;
-    ctx.fillRect(x, h - 120 - height, 80, height);
-    ctx.globalAlpha = 1;
-    t(ctx, label, x + 40, h - 82, 18, C.text, 700);
-    t(ctx, vals[i].toFixed(2), x + 40, h - 136 - height, 16, C.muted, 650);
+    const x = 138 + i * 172;
+    const bh = vals[i] * 470;
+    box(ctx, x, h - 126 - bh, 88, bh, "", { stroke: C.line, fill: "rgba(255,255,255,0.035)", radius: 12 });
+    ctx.fillStyle = i === Math.floor(t % labels.length) ? C.accent : "rgba(255,255,255,0.42)";
+    ctx.fillRect(x, h - 126 - bh, 88, bh);
+    text(ctx, label, x + 44, h - 88, 18, C.text, 720);
+    text(ctx, vals[i].toFixed(2), x + 44, h - 146 - bh, 16, C.muted, 650);
   });
-  t(ctx, "softmax：分数变成总和为 1 的注意力预算", w / 2, 46, 22, C.text, 700);
+  text(ctx, "Σ weights = 1", w / 2, 54, 25, C.text, 760);
 }
 
-function drawMatrix(ctx, w, h, time) {
+function drawWeighted(ctx, w, h, t) {
   bg(ctx, w, h);
-  const words = ["用", "毒", "毒蛇", "被", "毒死"];
-  const weights = [
-    [0.06, 0.44, 0.24, 0.10, 0.16],
-    [0.08, 0.20, 0.35, 0.12, 0.25],
-    [0.05, 0.18, 0.42, 0.15, 0.20],
-    [0.04, 0.16, 0.24, 0.20, 0.36],
-    [0.03, 0.17, 0.30, 0.18, 0.32],
-  ];
-  const cell = 62, x0 = w / 2 - cell * 2.5, y0 = 110;
-  const row = Math.floor(time % 5);
-  words.forEach((word, i) => {
-    t(ctx, word, x0 - 18, y0 + i * cell + cell / 2, 14, C.muted, 650, "right");
-    t(ctx, word, x0 + i * cell + cell / 2, y0 - 20, 14, C.muted, 650);
+  const vals = [["V₁", 0.16], ["V₂", 0.42], ["V₃", 0.12], ["V₄", 0.30]];
+  vals.forEach(([label, weight], i) => {
+    const y = 100 + i * 90;
+    box(ctx, 96, y, 120, 56, label, { stroke: C.line, size: 22 });
+    text(ctx, `× ${weight.toFixed(2)}`, 282, y + 28, 22, i === Math.floor(t % vals.length) ? C.accent : C.muted, 760);
+    arrow(ctx, 350, y + 28, 530, h / 2, i === Math.floor(t % vals.length) ? C.accent : "rgba(255,255,255,0.24)");
   });
-  for (let r = 0; r < 5; r++) {
-    for (let c = 0; c < 5; c++) {
-      const v = weights[r][c];
-      ctx.fillStyle = r === row ? `rgba(10,132,255,${0.16 + v})` : `rgba(255,255,255,${0.05 + v * 0.35})`;
-      ctx.fillRect(x0 + c * cell, y0 + r * cell, cell - 4, cell - 4);
-      t(ctx, v.toFixed(2), x0 + c * cell + cell / 2, y0 + r * cell + cell / 2, 13, C.text, 650);
-    }
-  }
-  t(ctx, "一行 = 一个 token 看全句的关注分布", w / 2, h - 52, 22, C.text, 700);
+  box(ctx, 560, h / 2 - 58, 190, 116, "zᵢ", { stroke: C.accent, size: 38 });
+  text(ctx, "上下文后的新向量", 655, h / 2 + 78, 18, C.muted, 650);
 }
 
-function drawHeads(ctx, w, h, time) {
+function drawAttentionFormula(ctx, w, h, t) {
   bg(ctx, w, h);
-  const heads = ["修饰关系", "动作关系", "实体关系", "长距离依赖"];
-  heads.forEach((label, i) => {
-    const x = 110 + (i % 2) * 340;
-    const y = 110 + Math.floor(i / 2) * 150;
-    box(ctx, x, y, 270, 110, "#101010", i === Math.floor(time % 4) ? C.accent : C.line);
-    t(ctx, `Head ${i + 1}`, x + 34, y + 34, 20, C.text, 720, "left");
-    t(ctx, label, x + 34, y + 72, 18, C.muted, 650, "left");
+  const steps = [["QKᵀ", "打分"], ["/√dₖ", "缩放"], ["softmax", "权重"], ["×V", "读内容"]];
+  steps.forEach(([a, b], i) => {
+    const x = 82 + i * 198;
+    box(ctx, x, h / 2 - 54, 150, 108, "", { stroke: i === Math.floor(t % steps.length) ? C.accent : C.line });
+    text(ctx, a, x + 75, h / 2 - 12, 26, C.text, 760);
+    text(ctx, b, x + 75, h / 2 + 28, 17, C.muted, 650);
+    if (i < steps.length - 1) arrow(ctx, x + 154, h / 2, x + 192, h / 2, "rgba(10,132,255,0.8)");
   });
-  t(ctx, "多个头并行观察不同关系，再拼接回来", w / 2, h - 54, 22, C.text, 700);
+  text(ctx, "Attention(Q,K,V)", w / 2, 92, 30, C.text, 780);
 }
 
-function drawEncoder(ctx, w, h, time) {
+function drawLlmWhy(ctx, w, h, t) {
   bg(ctx, w, h);
-  const blocks = ["Multi-Head Attention", "Add + LayerNorm", "Feed Forward", "Add + LayerNorm"];
-  blocks.forEach((label, i) => {
-    const y = 86 + i * 95;
-    box(ctx, w / 2 - 210, y, 420, 62, "#101010", i === Math.floor(time % 4) ? C.accent : C.line);
-    t(ctx, label, w / 2, y + 31, 20, C.text, 700);
-    if (i < blocks.length - 1) arrow(ctx, w / 2, y + 62, w / 2, y + 92, "#777");
+  const layers = ["Layer 1", "Layer 8", "Layer 16", "Layer 32"];
+  layers.forEach((layer, i) => {
+    const y = 92 + i * 112;
+    box(ctx, 142 + i * 34, y, 530 - i * 68, 64, layer, { stroke: i === Math.floor(t % layers.length) ? C.accent : C.line, size: 20 });
   });
-  t(ctx, "一个 Encoder Block：交换信息，再稳定和加工", w / 2, h - 46, 22, C.text, 700);
+  text(ctx, "越深层，表示越抽象", w / 2, h - 78, 25, C.text, 760);
 }
 
-function drawGenerate(ctx, w, h, time) {
+function drawSummary(ctx, w, h, t) {
   bg(ctx, w, h);
-  const seqs = ["<BOS>", "<BOS> 不会", "<BOS> 不会 被", "<BOS> 不会 被 毒死"];
-  const idx = Math.floor(time * 0.8) % seqs.length;
-  seqs.forEach((seq, i) => {
-    const y = 100 + i * 82;
-    box(ctx, 120, y, 660, 54, "#101010", i === idx ? C.accent : C.line);
-    t(ctx, seq, 150, y + 27, 18, C.text, 650, "left");
-  });
-  t(ctx, "每一步把新 token 接回序列，再预测下一个", w / 2, h - 54, 22, C.text, 700);
-}
-
-function drawMask(ctx, w, h, time) {
-  bg(ctx, w, h);
-  const n = 6, cell = 52, x0 = w / 2 - (n * cell) / 2, y0 = 100;
-  const row = Math.floor(time % n);
-  for (let r = 0; r < n; r++) {
-    for (let c = 0; c < n; c++) {
-      const future = c > r;
-      ctx.fillStyle = future ? "rgba(255,255,255,0.08)" : "rgba(10,132,255,0.24)";
-      ctx.fillRect(x0 + c * cell, y0 + r * cell, cell - 4, cell - 4);
-      ctx.strokeStyle = r === row ? C.accent : C.line;
-      ctx.strokeRect(x0 + c * cell, y0 + r * cell, cell - 4, cell - 4);
-      t(ctx, future ? "−∞" : "ok", x0 + c * cell + cell / 2, y0 + r * cell + cell / 2, 15, future ? C.dim : C.text, 650);
-    }
-  }
-  t(ctx, "未来位置设为 −∞，softmax 后权重为 0", w / 2, h - 50, 22, C.text, 700);
-}
-
-function drawCross(ctx, w, h, time) {
-  bg(ctx, w, h);
-  const left = ["用", "毒", "毒蛇", "毒死"];
-  const right = ["<BOS>", "毒蛇", "不会"];
-  left.forEach((word, i) => {
-    box(ctx, 110, 100 + i * 84, 210, 52, "#101010", C.line);
-    t(ctx, word, 215, 126 + i * 84, 18, C.text, 700);
-  });
-  right.forEach((word, i) => {
-    box(ctx, 610, 140 + i * 95, 210, 58, "#101010", C.line);
-    t(ctx, word, 715, 169 + i * 95, 18, C.text, 700);
-  });
-  left.forEach((_, i) => right.forEach((__, j) => {
-    ctx.strokeStyle = (i + j + Math.floor(time)) % 3 === 0 ? C.accent : "#444";
-    ctx.lineWidth = (i + j + Math.floor(time)) % 3 === 0 ? 2.4 : 1;
-    ctx.beginPath();
-    ctx.moveTo(610, 169 + j * 95);
-    ctx.bezierCurveTo(500, 169 + j * 95, 430, 126 + i * 84, 320, 126 + i * 84);
-    ctx.stroke();
-  }));
-  t(ctx, "Decoder 查询 Encoder 的记忆", w / 2, 48, 22, C.text, 700);
-}
-
-function drawOutput(ctx, w, h, time) {
-  bg(ctx, w, h);
-  const labels = ["不会", "会", "毒死", "因为", "毒蛇"];
-  const probs = [0.34, 0.11, 0.20, 0.18, 0.17];
+  const labels = ["文字", "Token", "向量", "Q/K/V", "权重", "新语义"];
   labels.forEach((label, i) => {
-    const y = 88 + i * 66;
-    box(ctx, 160, y, 590, 38, "#101010", C.line);
-    ctx.fillStyle = i === 0 ? C.accent : "#f5f5f7";
-    ctx.globalAlpha = i === 0 ? 0.85 : 0.25;
-    ctx.fillRect(160, y, 590 * probs[i] * 1.8, 38);
-    ctx.globalAlpha = 1;
-    t(ctx, label, 188, y + 19, 17, C.text, 700, "left");
-    t(ctx, `${Math.round(probs[i] * 100)}%`, 780, y + 19, 17, C.muted, 650, "right");
+    const x = 84 + i * ((w - 168) / (labels.length - 1));
+    const y = h / 2 + Math.sin(t + i) * 18;
+    box(ctx, x - 52, y - 36, 104, 72, label, { stroke: i === Math.floor(t % labels.length) ? C.accent : C.line, size: 17 });
+    if (i < labels.length - 1) arrow(ctx, x + 54, y, x + ((w - 168) / (labels.length - 1)) - 56, h / 2 + Math.sin(t + i + 1) * 18, "rgba(10,132,255,0.72)");
   });
-  t(ctx, "argmax → 不会", w / 2, h - 52, 24, C.accent, 760);
+  text(ctx, "Self-Attention = 可计算的上下文关系", w / 2, 94, 26, C.text, 760);
 }
 
 showSlide(0);
