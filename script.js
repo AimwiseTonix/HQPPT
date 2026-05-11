@@ -3542,9 +3542,33 @@ function showSlide(index) {
   requestAnimationFrame(() => active.classList.add("enter"));
   slideNo.textContent = `${next + 1} / ${slides.length}`;
   progressBar.style.width = `${((next + 1) / slides.length) * 100}%`;
+  requestAnimationFrame(updateDeckScale);
+}
+
+function updateDeckScale() {
+  if (!window.matchMedia("(max-width: 980px)").matches) {
+    document.documentElement.style.removeProperty("--deck-scale");
+    document.documentElement.style.removeProperty("--deck-left");
+    document.documentElement.style.removeProperty("--deck-top");
+    return;
+  }
+  document.documentElement.style.setProperty("--deck-scale", "1");
+  document.documentElement.style.setProperty("--deck-left", "0px");
+  document.documentElement.style.setProperty("--deck-top", "0px");
+  const active = document.querySelector(".slide.active");
+  const width = Math.max(1600, active?.scrollWidth || 1600);
+  const height = Math.max(900, active?.scrollHeight || 900);
+  const safetyScale = window.innerWidth < window.innerHeight ? 0.65 : 0.92;
+  const scale = Math.min(window.innerWidth / width, window.innerHeight / height) * safetyScale;
+  const left = (window.innerWidth - width * scale) / 2;
+  const top = (window.innerHeight - height * scale) / 2;
+  document.documentElement.style.setProperty("--deck-scale", String(scale));
+  document.documentElement.style.setProperty("--deck-left", `${left}px`);
+  document.documentElement.style.setProperty("--deck-top", `${top}px`);
 }
 
 renderDeck();
+updateDeckScale();
 const requestedSlide = Number(new URLSearchParams(window.location.search).get("slide"));
 const initialSlide = Math.max(0, Math.min(slides.length - 1, Number.isFinite(requestedSlide) ? requestedSlide - 1 : 0));
 showSlide(initialSlide);
@@ -3561,3 +3585,6 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "ArrowLeft") showSlide(state.index - 1);
   if (event.key.toLowerCase() === "f") fullBtn.click();
 });
+
+window.addEventListener("resize", updateDeckScale);
+window.addEventListener("orientationchange", updateDeckScale);
